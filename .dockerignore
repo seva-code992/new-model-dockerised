@@ -1,0 +1,20 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.git/
+.gitignore
+.venv/
+
+# Local data directories
+embeddings/
+data/
+
+# Raw unused files
+*.npy
+*.gff3
+*.tsv
+*.db
+Database*
+fileprep.py
+*_embeddings.py
