@@ -1,19 +1,22 @@
-version: '3.8'
 
 services:
   backend:
     build: 
       context: ./backend
       dockerfile: Dockerfile
+    env_file:
+      - ./backend/email.env
     ports:
       - "8000:8000"
     volumes:
       - ./backend:/app
       - ./db:/db
-      #- ./db/embeddings:/app/embeddings:ro
     environment:
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
+    networks:
+      - gene_search_network
+
   frontend:
     build: 
       context: ./frontend
@@ -27,3 +30,8 @@ services:
       - /app/node_modules
     depends_on:
       - backend
+    networks:
+      - gene_search_network
+networks:
+  gene_search_network:
+    driver: bridge

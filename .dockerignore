@@ -16,5 +16,10 @@ data/
 *.tsv
 *.db
 Database*
+fts_db*
 fileprep.py
 *_embeddings.py
+
+
+#secrets
+email.env

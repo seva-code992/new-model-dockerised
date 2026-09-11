@@ -8,3 +8,16 @@ wheels/
 
 # Virtual environments
 .venv
+
+#secrets
+email.env
+
+#db
+*.csv
+*.gff3
+*.npy
+*.tsv
+
+
+#docker 
+node_modules
