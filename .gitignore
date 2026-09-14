@@ -18,6 +18,7 @@ email.env
 *.npy
 *.tsv
 fts_database/
+Database*
 
 #docker 
 node_modules
