@@ -17,7 +17,7 @@ email.env
 *.gff3
 *.npy
 *.tsv
-
+fts_database/
 
 #docker 
 node_modules
