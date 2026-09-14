@@ -21,3 +21,4 @@ email.env
 
 #docker 
 node_modules
+.cache*
