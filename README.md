@@ -14,3 +14,39 @@
 
 ## Container Commands
 - Start: `docker compose up --build`
+
+
+
+## For the embeddings database: 
+1) Run fileprep.py (db/embeddings)
+2) Run embeddings.sql 
+
+'''
+bash 
+duckdb Database -f db/embeddings/embeddings.sql
+'''
+or 
+
+''' 
+duckdb Database 
+read db/embeddings/embeddings.sql
+'''
+
+3) Run <species>_embeddings.py to compute and store the embeddings locally. 
+
+
+## For the fts feature: 
+1) cd db/embeddings
+2) mv *.tsv *gff3 db/fts_database/
+3) run fts.sql 
+
+'''
+bash 
+duckdb fts_database -f db/fts_database/fts.sql
+'''
+or 
+
+''' 
+duckdb Database 
+read db/fts_database/fts.sql
+'''
