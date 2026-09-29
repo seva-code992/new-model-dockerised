@@ -249,7 +249,7 @@ SPECIES_KEY_MAP = {
 
 
 @app.get("/Search/")
-async def search(species: species, query:str, number_of_results: int = 10): 
+async def search(species: species, query:str, number_of_results: int = 10, include_embeddings: bool = False): 
     internal_key = SPECIES_KEY_MAP[species]                                #UPDATED
     data = embedding_loadings[internal_key]                                #species.value would be "", .name is what is on the left 
     query_embedding = model.encode_query(query)
@@ -265,12 +265,14 @@ async def search(species: species, query:str, number_of_results: int = 10):
     for i in range(count):
         index = indices[i]
         score = similarities[index].item()
-        results.append({
+        entry = {
             "Gene": data["ids"][index],
-            # "Indices": embeddings[index].tolist(),
             "Similarity score": score,
             "Description": data["description"][index]
-        })
+        }
+        if include_embeddings:
+            entry["Embedding"] = data["embeddings"][index].tolist()
+        results.append(entry)
     return results
 
 
