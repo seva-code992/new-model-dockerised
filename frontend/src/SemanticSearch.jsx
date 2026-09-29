@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 
 const SPECIES_OPTIONS = [
   "Populus tremula",
@@ -21,6 +21,7 @@ export default function SemanticSearch() {
   const [error, setError] = useState("");
   const [copyStatus, setCopyStatus] = useState("");
   const [showCopyMenu, setShowCopyMenu] = useState(false);
+  const lastSearch = useRef(null); // parameters of the search that produced `results`
 
   const toggleExpanded = () => setIsExpanded((prev) => !prev);
 
@@ -45,6 +46,7 @@ export default function SemanticSearch() {
 
       const data = await response.json();
       setResults(data);
+      lastSearch.current = { species, query, numberOfResults };
     } catch (err) {
       console.error("Search fetch error:", err);
       setError("Something went wrong while searching. Please verify the backend is running.");
@@ -57,7 +59,7 @@ export default function SemanticSearch() {
 
 
 
-const handleCopy = (format) => {
+const handleCopy = async (format) => {
   if (results.length === 0) return;
 
   let textToCopy = "";
@@ -73,11 +75,40 @@ const handleCopy = (format) => {
     textToCopy = results.map((r) => r.Gene).join("\n");
     setCopyStatus("Copied IDs!");
   } else if (format === "json") {
-    textToCopy = JSON.stringify(results, null, 2);
-    setCopyStatus("Copied JSON!");
+    // ID, description, similarity and embedding vector for every gene (used by the Graph maker)
+    setShowCopyMenu(false);
+    setCopyStatus("Fetching embeddings...");
+    try {
+      const { species: sp, query: q, numberOfResults: n } = lastSearch.current;
+      const res = await fetch(
+        `${API_BASE_URL}/Search/?species=${encodeURIComponent(sp)}&query=${encodeURIComponent(q)}&number_of_results=${n}&include_embeddings=true`
+      );
+      if (!res.ok) throw new Error(`Server returned error code: ${res.status}`);
+      const full = await res.json();
+      textToCopy = JSON.stringify(
+        {
+          query: q,
+          species: sp,
+          genes: full.map((r) => ({
+            id: r.Gene,
+            description: r.Description,
+            similarity: r["Similarity score"],
+            embedding: r.Embedding,
+          })),
+        },
+        null,
+        2
+      );
+      setCopyStatus("Copied JSON!");
+    } catch (err) {
+      console.error("Embedding fetch error:", err);
+      setCopyStatus("Copy failed");
+      setTimeout(() => setCopyStatus(""), 2000);
+      return;
+    }
   }
 
-  navigator.clipboard.writeText(textToCopy);
+  await navigator.clipboard.writeText(textToCopy);
   setShowCopyMenu(false);
 
   // Reset indicator message after 2 seconds

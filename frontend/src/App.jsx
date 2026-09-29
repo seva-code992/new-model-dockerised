@@ -2,6 +2,7 @@ import React from 'react'
 import SemanticSearch from './SemanticSearch.jsx'
 import KeywordSearch from './KeywordSearch.jsx'
 import ReportModal from './ReportModal.jsx'
+import GraphMaker from './GraphMaker.jsx'
 
 export default function App() {
   return (
@@ -35,6 +36,9 @@ export default function App() {
             </p>
           </div>
         </div>
+
+        {/* Card 4: Graph maker */}
+        <GraphMaker />
 
         {/* Footer Report Section */}
         <ReportModal />
