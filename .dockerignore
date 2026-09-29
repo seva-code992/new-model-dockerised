@@ -19,7 +19,7 @@ Database*
 fts_db*
 fileprep.py
 *_embeddings.py
-
+*.sql
 
 #secrets
 email.env

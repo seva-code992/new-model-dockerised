@@ -50,3 +50,6 @@ else:
     print("Embeddings saved to disk.")
     gene_ids = list(numpy.load(gene_ids_file, allow_pickle=True))
 print(f"Embedding matrix shape: {embeddings.shape}")
+
+
+
