@@ -5,6 +5,22 @@ import { downloadPng, downloadSvg } from "./chartUtils.js";
  * State shared by every chart: rename box, hover tooltip and label overrides.
  * `stable` only holds functions whose identity never changes, so d3 effects can depend on it.
  */
+/**
+ * Mouse wheel scrolls the page as usual; Ctrl/Cmd + wheel (or a trackpad pinch) zooms the chart.
+ * Dragging still pans. Used as the `filter` of every d3.zoom().
+ */
+export function zoomFilter(event) {
+  if (event.type === "wheel") return event.ctrlKey || event.metaKey;
+  return !event.button;
+}
+
+/** One Ctrl+wheel notch zooms by about 1.6x; d3's default is far too strong for a mouse wheel. */
+export function zoomWheelDelta(event) {
+  const unit = event.deltaMode === 1 ? 0.05 : event.deltaMode ? 1 : 0.002;
+  const delta = -event.deltaY * unit * (event.ctrlKey ? 3 : 1);
+  return Math.max(-0.5, Math.min(0.5, delta));
+}
+
 export function useChartTools() {
   const containerRef = useRef(null);
   const svgRef = useRef(null);
@@ -12,6 +28,8 @@ export function useChartTools() {
   const [tooltip, setTooltip] = useState(null);
   const [renameBox, setRenameBox] = useState(null);
   const [labels, setLabels] = useState({});
+  const labelsRef = useRef(labels);
+  labelsRef.current = labels;
 
   const showTooltip = useCallback((event, lines) => {
     const containerRect = containerRef.current.getBoundingClientRect();
@@ -23,9 +41,13 @@ export function useChartTools() {
     const containerRect = containerRef.current.getBoundingClientRect();
     const textRect = element.getBoundingClientRect();
     setTooltip(null);
+    // A label still showing its default text starts empty (the default is shown as a hint),
+    // so the user can just type. A label that was already renamed opens with its text to edit.
+    const isDefault = labelsRef.current[key] === undefined;
     setRenameBox({
       key,
-      value,
+      value: isDefault ? "" : value,
+      placeholder: value,
       x: textRect.left - containerRect.left,
       y: textRect.top - containerRect.top,
       width: Math.max(textRect.width + 24, 140),
@@ -68,7 +90,7 @@ export function frameLegend(legendGroup, padding = 10) {
     .attr("height", box.height + padding * 2);
 }
 
-export function ChartView({ tools, width, height, toolbar, overlay }) {
+export function ChartView({ tools, width, height, toolbar, overlay, zoomable = true }) {
   const { containerRef, svgRef, tooltip, renameBox, setRenameBox, setLabels, zoomApi } = tools;
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
@@ -102,9 +124,9 @@ export function ChartView({ tools, width, height, toolbar, overlay }) {
           <input
             autoFocus
             value={renameBox.value}
+            placeholder={renameBox.placeholder}
             onChange={(event) => setRenameBox({ ...renameBox, value: event.target.value })}
             onBlur={commitRename}
-            onFocus={(event) => event.target.select()}
             onKeyDown={(event) => {
               if (event.key === "Enter") commitRename();
               if (event.key === "Escape") setRenameBox(null);
@@ -115,11 +137,17 @@ export function ChartView({ tools, width, height, toolbar, overlay }) {
         )}
       </div>
       <div className="chart-view__actions">
-        <span className="chart-view__hint">Scroll to zoom, drag to pan, click any text to rename it.</span>
+        <span className="chart-view__hint">
+          {zoomable ? "Ctrl + scroll (or the + / - buttons) to zoom, drag to pan. " : ""}Click any text to rename it.
+        </span>
         <div className="chart-view__buttons">
-          <button type="button" className="gm-button gm-button--small" onClick={() => zoomApi.current?.reset?.()}>
-            Reset zoom
-          </button>
+          {zoomable && (
+            <>
+              <button type="button" className="gm-button gm-button--small" aria-label="Zoom in" onClick={() => zoomApi.current?.zoomIn?.()}>+</button>
+              <button type="button" className="gm-button gm-button--small" aria-label="Zoom out" onClick={() => zoomApi.current?.zoomOut?.()}>-</button>
+              <button type="button" className="gm-button gm-button--small" onClick={() => zoomApi.current?.reset?.()}>Reset zoom</button>
+            </>
+          )}
           <div className="export-menu">
             <button type="button" className="gm-button gm-button--small" onClick={() => setExportMenuOpen((open) => !open)}>
               Export as...

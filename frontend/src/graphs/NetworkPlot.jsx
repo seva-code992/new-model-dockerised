@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
-import { ChartView, addText, frameLegend, useChartTools } from "./ChartTools.jsx";
+import { ChartView, addText, frameLegend, useChartTools, zoomFilter, zoomWheelDelta } from "./ChartTools.jsx";
 import { cosine } from "./chartUtils.js";
 
 const CHART_WIDTH = 980;
@@ -10,11 +10,18 @@ const PLOT_WIDTH = CHART_WIDTH - MARGIN.left - MARGIN.right;
 const PLOT_HEIGHT = CHART_HEIGHT - MARGIN.top - MARGIN.bottom;
 const DEFAULT_TITLE = "Gene graph (click to rename)";
 const DEFAULT_THRESHOLD = 0.6;
-const NODE_RADIUS = 7;
-const NEAREST_NEIGHBOURS_FOR_LAYOUT = 3;
-const LAYOUT_TICKS = 300;
-const LAYOUT_PADDING = 24;
+const NODE_RADIUS = 6;
+const EDGE_WIDTH_RANGE = [1, 3]; // pixels for a similarity of 0 and 1 (never thinner than 1px)
 const EDGE_LEGEND_SAMPLES = [0.25, 0.5, 0.75, 1];
+const MIN_ZOOM = 0.3;
+const MAX_ZOOM = 40;
+
+// Layout tuning: strong repulsion and a generous collision radius keep the nodes well apart.
+const NEAREST_NEIGHBOURS_FOR_LAYOUT = 2;
+const LAYOUT_TICKS = 400;
+const LAYOUT_PADDING = 30;
+const REPULSION_STRENGTH = -420;
+const COLLISION_RADIUS = NODE_RADIUS * 4;
 
 /**
  * Nodes are placed once from the embeddings; the slider later only decides which lines are drawn.
@@ -41,9 +48,9 @@ function buildGraph(groups) {
       .forEach((pair) => layoutLinks.set(`${pair.source}-${pair.target}`, { ...pair }));
   });
   const simulation = d3.forceSimulation(nodes)
-    .force("link", d3.forceLink([...layoutLinks.values()]).distance((link) => 30 + (1 - link.similarity) * 400).strength(0.4))
-    .force("charge", d3.forceManyBody().strength(-90))
-    .force("collide", d3.forceCollide(NODE_RADIUS * 2))
+    .force("link", d3.forceLink([...layoutLinks.values()]).distance((link) => 60 + (1 - link.similarity) * 500).strength(0.25))
+    .force("charge", d3.forceManyBody().strength(REPULSION_STRENGTH))
+    .force("collide", d3.forceCollide(COLLISION_RADIUS))
     .force("center", d3.forceCenter(PLOT_WIDTH / 2, PLOT_HEIGHT / 2))
     .stop();
   simulation.tick(LAYOUT_TICKS);
@@ -65,13 +72,15 @@ export default function NetworkPlot({ groups }) {
   const { svgRef, zoomApi, labels, showTooltip, hideTooltip, stable } = tools;
   const zoomTransformRef = useRef(d3.zoomIdentity);
   const [threshold, setThreshold] = useState(DEFAULT_THRESHOLD);
-  const graph = useMemo(() => buildGraph(groups), [groups]);
+  const [layoutVersion, setLayoutVersion] = useState(0); // bumping it lays the nodes out again
+  // Dragged positions live on the node objects, so they survive slider changes and re-renders.
+  const graph = useMemo(() => buildGraph(groups), [groups, layoutVersion]);
   const visibleEdgeCount = useMemo(() => graph.pairs.filter((pair) => pair.similarity >= threshold).length, [graph, threshold]);
 
   useEffect(() => {
     const labelOf = (key, fallback) => labels[key] ?? fallback;
     const { nodes, pairs } = graph;
-    const edgeWidth = d3.scaleLinear().domain([0, 1]).range([0.4, 7]);
+    const edgeWidth = d3.scaleLinear().domain([0, 1]).range(EDGE_WIDTH_RANGE);
 
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
@@ -102,41 +111,58 @@ export default function NetworkPlot({ groups }) {
     canvas.append("rect").attr("class", "network__canvas").attr("width", PLOT_WIDTH).attr("height", PLOT_HEIGHT);
     const world = canvas.append("g");
 
-    // Lines are opaque; the strongest are drawn last so they stay on top.
-    const edgeLayer = world.append("g");
-    pairs
-      .filter((pair) => pair.similarity >= threshold)
-      .sort((a, b) => a.similarity - b.similarity)
-      .forEach((pair) => {
-        const from = nodes[pair.source];
-        const to = nodes[pair.target];
-        edgeLayer.append("line")
-          .attr("class", "network__edge")
-          .attr("x1", from.screenX).attr("y1", from.screenY).attr("x2", to.screenX).attr("y2", to.screenY)
-          .attr("stroke-width", edgeWidth(pair.similarity))
-          .on("mousemove", (event) => showTooltip(event, [`${from.id} - ${to.id}`, `Similarity: ${pair.similarity.toFixed(3)}`]))
-          .on("mouseleave", hideTooltip);
+    // Lines: black, at least 1px; the strongest are drawn last so they stay on top.
+    const visiblePairs = pairs.filter((pair) => pair.similarity >= threshold).sort((a, b) => a.similarity - b.similarity);
+    const moveEdge = (selection) => selection
+      .attr("x1", (pair) => nodes[pair.source].screenX).attr("y1", (pair) => nodes[pair.source].screenY)
+      .attr("x2", (pair) => nodes[pair.target].screenX).attr("y2", (pair) => nodes[pair.target].screenY);
+    const edgeSelection = world.append("g").selectAll("line").data(visiblePairs).join("line")
+      .attr("class", "network__edge")
+      .attr("stroke-width", (pair) => edgeWidth(pair.similarity))
+      .call(moveEdge)
+      .on("mousemove", (event, pair) => showTooltip(event, [
+        `${nodes[pair.source].id} - ${nodes[pair.target].id}`,
+        `Similarity: ${pair.similarity.toFixed(3)}`,
+      ]))
+      .on("mouseleave", hideTooltip);
+
+    // Nodes can be dragged to make room; the lines follow. Dragging uses world coordinates, so it works while zoomed.
+    const dragNode = d3.drag()
+      .container(world.node())
+      .subject((event, node) => ({ x: node.screenX, y: node.screenY }))
+      .on("start", () => hideTooltip())
+      .on("drag", function (event, node) {
+        node.screenX = event.x;
+        node.screenY = event.y;
+        d3.select(this).attr("cx", node.screenX).attr("cy", node.screenY);
+        const nodeIndex = nodes.indexOf(node);
+        edgeSelection.filter((pair) => pair.source === nodeIndex || pair.target === nodeIndex).call(moveEdge);
       });
+    world.append("g").selectAll("circle").data(nodes).join("circle")
+      .attr("class", "network__node")
+      .attr("cx", (node) => node.screenX).attr("cy", (node) => node.screenY).attr("r", NODE_RADIUS)
+      .attr("fill", (node) => node.group.color)
+      .on("mousemove", (event, node) => showTooltip(event, [
+        node.id,
+        labelOf(`group:${node.group.id}`, node.group.name),
+        node.description || "(no description)",
+      ]))
+      .on("mouseleave", hideTooltip)
+      .call(dragNode);
 
-    const nodeLayer = world.append("g");
-    nodes.forEach((node) => {
-      nodeLayer.append("circle")
-        .attr("class", "network__node")
-        .attr("cx", node.screenX).attr("cy", node.screenY).attr("r", NODE_RADIUS)
-        .attr("fill", node.group.color)
-        .on("mousemove", (event) => showTooltip(event, [
-          node.id,
-          labelOf(`group:${node.group.id}`, node.group.name),
-          node.description || "(no description)",
-        ]))
-        .on("mouseleave", hideTooltip);
-    });
-
+    // Ctrl + scroll zooms, plain scroll still scrolls the page, dragging the background pans.
     const zoomBehavior = d3.zoom()
-      .scaleExtent([0.5, 40])
+      .filter(zoomFilter)
+      .wheelDelta(zoomWheelDelta)
+      .scaleExtent([MIN_ZOOM, MAX_ZOOM])
       .on("zoom", (event) => { zoomTransformRef.current = event.transform; world.attr("transform", event.transform); });
     canvas.call(zoomBehavior).on("dblclick.zoom", null);
-    zoomApi.current = { reset: () => canvas.transition().duration(300).call(zoomBehavior.transform, d3.zoomIdentity) };
+    const animated = () => canvas.transition().duration(250);
+    zoomApi.current = {
+      reset: () => animated().call(zoomBehavior.transform, d3.zoomIdentity),
+      zoomIn: () => animated().call(zoomBehavior.scaleBy, 1.6),
+      zoomOut: () => animated().call(zoomBehavior.scaleBy, 1 / 1.6),
+    };
     canvas.call(zoomBehavior.transform, zoomTransformRef.current);
 
     return () => canvas.on(".zoom", null);
@@ -152,6 +178,10 @@ export default function NetworkPlot({ groups }) {
       />
       <span className="network__threshold-value">{threshold.toFixed(2)}</span>
       <span className="network__threshold-count">{visibleEdgeCount} of {graph.pairs.length} lines shown</span>
+      <button type="button" className="gm-button gm-button--small" onClick={() => setLayoutVersion((version) => version + 1)}>
+        Reset node positions
+      </button>
+      <span className="network__threshold-count">Drag a node to move it.</span>
     </div>
   );
 

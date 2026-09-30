@@ -8,15 +8,10 @@ const PASTE_HINT = {
   heatmap: "Paste a table (or a list of gene IDs) copied from the above features.",
   network: "Paste your data copied from the Semantic search (copied in JSON format only).",
 };
-const FIRST_GROUP_HINT = {
-  bar: "<DATA PASTED HERE BEFORE PRESSING TO ADD CATEGORY>",
+const NEW_GROUP_HINT = {
+  bar: "Paste a table copied from the above search features.",
   heatmap: "Paste a table copied from the above search features.",
   network: "Paste the JSON copied from the Semantic search.",
-};
-const NEW_GROUP_HINT = {
-  bar: "Paste a new table copied from the above search features.",
-  heatmap: "Paste a new table copied from the above search features.",
-  network: "Paste another JSON copied from the Semantic search.",
 };
 
 // ---- helpers -------------------------------------------------------------
@@ -27,17 +22,36 @@ function parsePastedData(plotType, text) {
   return parseTable(text, { allowIds: plotType === "heatmap" });
 }
 
+/**
+ * Names that still have their default value are cleared on the first click (so the user can just type)
+ * and restored if left empty. Names the user chose are edited in place.
+ */
+function NameInput({ value, defaultName, onChange, className, label }) {
+  const isDefault = defaultName !== undefined && value === defaultName;
+  return (
+    <input
+      className={className} value={value} placeholder={defaultName} aria-label={label}
+      onFocus={() => { if (isDefault) onChange(""); }}
+      onBlur={() => { if (!value.trim() && defaultName !== undefined) onChange(defaultName); }}
+      onChange={(event) => onChange(event.target.value)}
+    />
+  );
+}
+
 function makeGroup(plotType, groupNumber, text = "") {
+  const defaultName = plotType === "network" ? `Query${groupNumber}-Species${groupNumber}` : `Group${groupNumber}`;
   return {
     id: uid(),
-    name: plotType === "network" ? `Query${groupNumber}-Species${groupNumber}` : `Group${groupNumber}`,
+    defaultName,
+    name: defaultName,
     color: PALETTE[(groupNumber - 1) % PALETTE.length],
     text,
   };
 }
 
 function makeCategory(categoryNumber, groups) {
-  return { id: uid(), name: `Category${categoryNumber}`, groups };
+  const defaultName = `Category${categoryNumber}`;
+  return { id: uid(), defaultName, name: defaultName, groups };
 }
 
 // ---- small components ----------------------------------------------------
@@ -55,9 +69,10 @@ function GroupBox({ plotType, group, placeholder, showColor, canRemove, onChange
   return (
     <div className="editor-group">
       <div className="editor-group__heading">
-        <input
-          className="editor-group__name" value={group.name} aria-label="Group name"
-          onChange={(event) => onChange({ ...group, name: event.target.value })}
+        <NameInput
+          className="editor-group__name" label="Group name"
+          value={group.name} defaultName={group.defaultName}
+          onChange={(name) => onChange({ ...group, name })}
         />
         <span className="editor-group__rename-hint">(Click to rename)</span>
         {canRemove && (
@@ -194,9 +209,10 @@ export default function GraphEditor({ plotType, seedCategories, onGenerate, onEx
           {!groupsOnly && (
             <div className="editor-category__header">
               <div className="editor-category__pill">
-                <input
-                  className="editor-category__name" value={category.name} aria-label="Category name"
-                  onChange={(event) => updateCategory(category.id, { name: event.target.value })}
+                <NameInput
+                  className="editor-category__name" label="Category name"
+                  value={category.name} defaultName={category.defaultName}
+                  onChange={(name) => updateCategory(category.id, { name })}
                 />
                 <span className="editor-group__rename-hint">(Click to rename)</span>
                 {categories.length > 1 && (
@@ -215,7 +231,7 @@ export default function GraphEditor({ plotType, seedCategories, onGenerate, onEx
             {category.groups.map((group, groupIndex) => (
               <GroupBox
                 key={group.id} plotType={plotType} group={group}
-                placeholder={groupIndex === 0 && !group.text ? FIRST_GROUP_HINT[plotType] : NEW_GROUP_HINT[plotType]}
+                placeholder={NEW_GROUP_HINT[plotType]}
                 showColor={plotType !== "heatmap"}
                 canRemove={category.groups.length > 1}
                 onChange={(updatedGroup) => updateGroup(category, updatedGroup)}

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import * as d3 from "d3";
-import { ChartView, addText, frameLegend, useChartTools } from "./ChartTools.jsx";
+import { ChartView, addText, frameLegend, useChartTools, zoomFilter, zoomWheelDelta } from "./ChartTools.jsx";
 
 const CHART_WIDTH = 980;
 const CHART_HEIGHT = 590;
@@ -147,12 +147,19 @@ export default function BarPlot({ categories }) {
     };
 
     const zoomBehavior = d3.zoom()
+      .filter(zoomFilter)
+      .wheelDelta(zoomWheelDelta)
       .scaleExtent([1, MAX_ZOOM])
       .extent([[0, 0], [PLOT_WIDTH, PLOT_HEIGHT]])
       .translateExtent([[0, 0], [PLOT_WIDTH, PLOT_HEIGHT]])
       .on("zoom", (event) => { zoomTransformRef.current = event.transform; render(event.transform); });
     plotRoot.call(zoomBehavior).on("dblclick.zoom", null);
-    zoomApi.current = { reset: () => plotRoot.transition().duration(300).call(zoomBehavior.transform, d3.zoomIdentity) };
+    const animated = () => plotRoot.transition().duration(250);
+    zoomApi.current = {
+      reset: () => animated().call(zoomBehavior.transform, d3.zoomIdentity),
+      zoomIn: () => animated().call(zoomBehavior.scaleBy, 1.6),
+      zoomOut: () => animated().call(zoomBehavior.scaleBy, 1 / 1.6),
+    };
     plotRoot.call(zoomBehavior.transform, zoomTransformRef.current);
 
     return () => plotRoot.on(".zoom", null);

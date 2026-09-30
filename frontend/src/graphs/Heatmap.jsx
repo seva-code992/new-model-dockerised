@@ -116,5 +116,5 @@ export default function Heatmap({ categories }) {
     </div>
   );
 
-  return <ChartView tools={tools} width={CHART_WIDTH} height={CHART_HEIGHT} overlay={scaleMenu} />;
+  return <ChartView tools={tools} width={CHART_WIDTH} height={CHART_HEIGHT} overlay={scaleMenu} zoomable={false} />;
 }
