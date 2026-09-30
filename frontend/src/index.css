@@ -842,6 +842,14 @@ select {
   --gm-accent: #62D0F6;
   --gm-accent-hover: #4bc3eb;
   --gm-letter-spacing: normal;
+  --gm-radius-button: 8px;
+  --gm-radius-box: 14px;
+  --gm-radius-inner: 8px;
+  --gm-radius-menu: 6px;
+  --gm-shadow-button: 0 2px 4px rgba(0, 0, 0, 0.22), 0 1px 2px rgba(0, 0, 0, 0.14);
+  --gm-shadow-button-pressed: inset 0 2px 3px rgba(0, 0, 0, 0.22);
+  --gm-shadow-box: 0 4px 10px rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0, 0, 0, 0.12);
+  --gm-shadow-sunken: inset 0 2px 5px rgba(0, 0, 0, 0.14);
 }
 
 .graph-maker,
@@ -930,8 +938,8 @@ select {
   color: var(--gm-ink);
   background: var(--gm-button-face);
   border: 1px solid var(--gm-border-strong);
-  border-radius: 0;
-  box-shadow: var(--legacy-shadow-sm);
+  border-radius: var(--gm-radius-button);
+  box-shadow: var(--gm-shadow-button);
   cursor: pointer;
 }
 .gm-button:hover {
@@ -939,6 +947,7 @@ select {
 }
 .gm-button:active {
   background: var(--gm-button-face-hover);
+  box-shadow: var(--gm-shadow-button-pressed);
 }
 .gm-button:disabled {
   opacity: 0.5;
@@ -987,8 +996,9 @@ select {
   text-align: left;
   background: var(--gm-button-face);
   border: 1px solid var(--gm-border-strong);
-  box-shadow: var(--legacy-shadow-sm);
+  box-shadow: var(--gm-shadow-button);
   cursor: pointer;
+  border-radius: var(--gm-radius-button);
 }
 .graph-option--bar,
 .graph-option--heatmap { width: 194px; }
@@ -998,6 +1008,7 @@ select {
 }
 .graph-option:active {
   background: var(--gm-button-face-hover);
+  box-shadow: var(--gm-shadow-button-pressed);
 }
 .graph-option--selected {
   background: var(--gm-accent);
@@ -1092,6 +1103,8 @@ select {
   height: 228px;
   background: var(--gm-row-face);
   border: 1px solid var(--gm-border-strong);
+  border-radius: var(--gm-radius-box);
+  box-shadow: var(--gm-shadow-sunken);
 }
 .editor__paste-textarea,
 .editor-group__textarea {
@@ -1107,10 +1120,10 @@ select {
   outline: none;
   resize: none;
   overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border-radius: var(--gm-radius-inner);
 }
-/* pasted tables keep their columns (scroll sideways); the hint text still wraps */
-.editor__paste-textarea:not(:placeholder-shown),
-.editor-group__textarea:not(:placeholder-shown) { white-space: pre; }
 .editor__paste-textarea::placeholder,
 .editor-group__textarea::placeholder { color: var(--gm-placeholder); }
 .editor__message { margin: 0; font-size: 12px; color: var(--gm-muted); }
@@ -1146,7 +1159,8 @@ select {
   padding: 4px 12px;
   background: var(--gm-button-face);
   border: 1px solid var(--gm-border-strong);
-  box-shadow: var(--legacy-shadow-sm);
+  box-shadow: var(--gm-shadow-button);
+  border-radius: var(--gm-radius-button);
 }
 .editor-category__name,
 .editor-group__name {
@@ -1160,6 +1174,7 @@ select {
   background: transparent;
   border: 1px solid transparent;
   outline: none;
+  border-radius: 6px;
 }
 .editor-category__name:hover,
 .editor-category__name:focus,
@@ -1187,18 +1202,24 @@ select {
   position: relative;
   display: flex;
   height: 248px;
-  padding: 34px 10px 10px;
+  padding: 10px;
   background: var(--group-color, var(--gm-default-group));
   border: 1px solid var(--gm-border-strong);
+  border-radius: var(--gm-radius-box);
+  box-shadow: var(--gm-shadow-box);
 }
+/* heatmap groups have no colour: a plain box */
+.editor-group__box--plain { background: var(--gm-row-face); box-shadow: var(--gm-shadow-sunken); }
+.editor-group__color-hint { font-size: 11px; color: var(--gm-link-blue); }
 /* The coloured frame around the text is itself the colour picker; the text sits on a light card. */
-.editor-group__box { padding: 34px 10px 10px; }
 .editor-group__textarea {
   position: relative;
   z-index: 1;
   padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--gm-shadow-sunken);
 }
+.editor-group__box--plain .editor-group__textarea { background: transparent; box-shadow: none; }
 .editor-group__box > .editor-group__frame-picker {
   position: absolute;
   inset: 0;
@@ -1208,18 +1229,6 @@ select {
   opacity: 0;
   cursor: pointer;
 }
-.editor-group__color-chip {
-  position: absolute;
-  top: 6px;
-  right: 10px;
-  z-index: 2;
-  pointer-events: none;
-  padding: 2px 10px;
-  font-size: 12px;
-  color: var(--gm-ink);
-  background: var(--gm-white);
-  border: 1px solid var(--gm-border-strong);
-}
 .editor__add-group-button {
   align-self: center;
   width: 52px;
@@ -1228,12 +1237,14 @@ select {
   color: var(--gm-ink);
   background: var(--gm-button-face);
   border: 1px solid var(--gm-border-strong);
-  box-shadow: var(--legacy-shadow-sm);
+  box-shadow: var(--gm-shadow-button);
   cursor: pointer;
+  border-radius: var(--gm-radius-button);
 }
 .editor__add-group-button:hover { background: var(--gm-button-face-hover); }
 .editor__add-group-button:active {
   background: var(--gm-button-face-hover);
+  box-shadow: var(--gm-shadow-button-pressed);
 }
 
 /* ---- graph view ---- */
@@ -1269,7 +1280,9 @@ select {
   min-width: 150px;
   background: var(--gm-white);
   border: 1px solid var(--gm-border-strong);
-  box-shadow: var(--legacy-shadow-md);
+  box-shadow: var(--gm-shadow-box);
+  border-radius: var(--gm-radius-menu);
+  overflow: hidden;
 }
 .export-menu__item {
   padding: 8px 12px;
@@ -1304,6 +1317,7 @@ select {
   color: var(--gm-ink);
   background: var(--gm-white);
   border: 1px solid var(--gm-ink);
+  border-radius: 4px;
 }
 
 /* ---- text inside the SVG charts ---- */
@@ -1355,7 +1369,8 @@ select {
   padding: 10px;
   background: var(--gm-white);
   border: 1px solid var(--gm-border-strong);
-  box-shadow: var(--legacy-shadow-md);
+  box-shadow: var(--gm-shadow-box);
+  border-radius: var(--gm-radius-menu);
 }
 .heatmap__scale-menu-title { margin-bottom: 4px; font-size: 12px; font-weight: 700; }
 .heatmap__scale-option {

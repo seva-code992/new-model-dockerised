@@ -83,16 +83,14 @@ function GroupBox({ plotType, group, placeholder, showColor, canRemove, onChange
           <button type="button" className="editor__remove-button" title="Remove group" onClick={onRemove}>×</button>
         )}
       </div>
-      <div className="editor-group__box" style={{ "--group-color": group.color }}>
+      {showColor && <span className="editor-group__color-hint">Click the coloured frame to change its colour</span>}
+      <div className={`editor-group__box ${showColor ? "" : "editor-group__box--plain"}`} style={{ "--group-color": group.color }}>
         {showColor && (
-          <>
-            <input
-              className="editor-group__frame-picker" type="color" value={group.color}
-              aria-label="Group colour (click the coloured frame)" title="Click the coloured frame to choose a colour"
-              onChange={(event) => onChange({ ...group, color: event.target.value })}
-            />
-            <span className="editor-group__color-chip">Click frame to pick colour</span>
-          </>
+          <input
+            className="editor-group__frame-picker" type="color" value={group.color}
+            aria-label="Group colour (click the coloured frame)" title="Click to change the colour"
+            onChange={(event) => onChange({ ...group, color: event.target.value })}
+          />
         )}
         <textarea
           className="editor-group__textarea" value={group.text} placeholder={placeholder} spellCheck={false}

@@ -10,16 +10,20 @@ const DEFAULT_TITLE = "Gene graph (click to rename)";
 const LEGEND_BAR = { width: 18, height: 200 };
 const MIN_CELL_SIZE_FOR_VALUE = 34;
 
-// The first entry is the default colour scale.
+// The first entry is the default colour scale. "Heat" means intensity: a Jaccard index of 0 is the cold end
+// and 1 is the hot end. RdYlBu and Spectral run red -> blue in d3, so they are flipped to put red at 1.
 const COLOR_SCALES = [
-  { key: "RdYlBu", label: "Red - Yellow - Blue", interpolator: d3.interpolateRdYlBu },
-  { key: "Spectral", label: "Spectral", interpolator: d3.interpolateSpectral },
-  { key: "Oranges", label: "Oranges", interpolator: d3.interpolateOranges },
-  { key: "PuBu", label: "Purple - Blue", interpolator: d3.interpolatePuBu },
+  { key: "RdYlBu", label: "Blue - Yellow - Red", interpolator: d3.interpolateRdYlBu, reversed: true },
+  { key: "Spectral", label: "Spectral (red = high)", interpolator: d3.interpolateSpectral, reversed: true },
+  { key: "Oranges", label: "Oranges", interpolator: d3.interpolateOranges, reversed: false },
+  { key: "PuBu", label: "Purple - Blue", interpolator: d3.interpolatePuBu, reversed: false },
 ];
 
-const gradientCss = (interpolator) =>
-  `linear-gradient(to right, ${d3.quantize(interpolator, 8).join(", ")})`;
+/** The colour for a Jaccard index t in [0, 1]. */
+const colorAt = (scale) => (t) => scale.interpolator(scale.reversed ? 1 - t : t);
+
+const gradientCss = (scale) =>
+  `linear-gradient(to right, ${d3.quantize(colorAt(scale), 8).join(", ")})`;
 
 /** categories[0].groups: [{id, name, genes: [{id}]}]. Every cell is the Jaccard index of two groups' gene IDs. */
 export default function Heatmap({ categories }) {
@@ -32,8 +36,8 @@ export default function Heatmap({ categories }) {
   useEffect(() => {
     const labelOf = (key, fallback) => labels[key] ?? fallback;
     const groupName = (group) => labelOf(`group:${group.id}`, group.name);
-    const interpolator = COLOR_SCALES.find((scale) => scale.key === colorScaleKey).interpolator;
-    const colorScale = d3.scaleSequential(interpolator).domain([0, 1]);
+    const activeScale = COLOR_SCALES.find((scale) => scale.key === colorScaleKey);
+    const colorScale = d3.scaleSequential(colorAt(activeScale)).domain([0, 1]);
     const gridSize = Math.min(CHART_WIDTH - MARGIN.left - MARGIN.right, CHART_HEIGHT - MARGIN.top - MARGIN.bottom);
     const cellScale = d3.scaleBand().domain(groups.map((group) => group.id)).range([0, gridSize]).padding(0.04);
 
@@ -109,7 +113,7 @@ export default function Heatmap({ categories }) {
           className={`heatmap__scale-option ${scale.key === colorScaleKey ? "heatmap__scale-option--active" : ""}`}
           onClick={() => { setColorScaleKey(scale.key); setScaleMenuOpen(false); }}
         >
-          <span className="heatmap__scale-preview" style={{ backgroundImage: gradientCss(scale.interpolator) }} />
+          <span className="heatmap__scale-preview" style={{ backgroundImage: gradientCss(scale) }} />
           {scale.label}
         </button>
       ))}
