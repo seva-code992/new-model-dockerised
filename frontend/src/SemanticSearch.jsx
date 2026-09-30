@@ -116,27 +116,25 @@ const handleCopy = async (format) => {
 };
 
   return (
-    <div className="w-full bg-white border-4 border-[#CCCCCC] p-6 shadow-lg relative transition-all">
+    <div className="semantic-search">
       {/* Top Card Bar */}
-      <div className="flex justify-between items-start">
+      <div className="semantic-search__header">
         <div>
-          <h2 className="text-xl font-bold text-black">Semantic search</h2>
+          <h2 className="semantic-search__title">Semantic search</h2>
           {!isExpanded && (
-            <p className="text-gray-500 font-medium text-sm mt-2">
+            <p className="semantic-search__description">
               Look for annotated genes within our database. The result retrieval is based on AI.
             </p>
           )}
         </div>
         <button
           onClick={toggleExpanded}
-          className="text-[#0004FF] focus:outline-none"
+          className="semantic-search__toggle-button"
           aria-label="Toggle Expand"
         >
           <svg
             viewBox="0 0 22 18"
-            className={`w-5 h-5 transition-transform duration-200 ${
-              isExpanded ? "" : "rotate-180"
-            }`}
+            className={`semantic-search__chevron${isExpanded ? " semantic-search__chevron--expanded" : ""}`}
           >
             <path d="M2 2 L11 15 L20 2" fill="none" stroke="currentColor" strokeWidth="2" />
           </svg>
@@ -145,16 +143,16 @@ const handleCopy = async (format) => {
 
       {/* Expanded Control Panel */}
       {isExpanded && (
-        <div className="mt-6 flex flex-col gap-6">
-          <form onSubmit={handleSearch} className="flex flex-col gap-4">
+        <div className="semantic-search__panel">
+          <form onSubmit={handleSearch} className="semantic-search__form">
             {/* Top Inputs: Species & Result count */}
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <label className="font-bold text-sm text-black">Species:</label>
+            <div className="semantic-search__filters">
+              <div className="semantic-search__field">
+                <label className="semantic-search__label">Species:</label>
                 <select
                   value={species}
                   onChange={(e) => setSpecies(e.target.value)}
-                  className="bg-[#E0E0E0] border border-gray-300 px-3 py-1.5 text-sm text-black focus:outline-none"
+                  className="semantic-search__select"
                 >
                   {SPECIES_OPTIONS.map((item) => (
                     <option key={item} value={item}>
@@ -164,34 +162,34 @@ const handleCopy = async (format) => {
                 </select>
               </div>
 
-              <div className="flex items-center gap-2">
-                <label className="font-bold text-sm text-black">Number of results:</label>
+              <div className="semantic-search__field">
+                <label className="semantic-search__label">Number of results:</label>
                 <input
                   type="number"
                   min="1"
                   value={numberOfResults}
                   onChange={(e) => setNumberOfResults(Number(e.target.value))}
-                  className="bg-[#E0E0E0] border border-gray-300 px-3 py-1.5 text-sm text-black w-20 text-center focus:outline-none"
+                  className="semantic-search__number-input"
                 />
               </div>
             </div>
 
             {/* Search Input Bar with Glass Icon Button */}
-            <div className="flex items-center gap-3 mt-2">
+            <div className="semantic-search__search-row">
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="What are you looking for?"
-                className="flex-1 border border-black rounded-full px-6 py-2 text-sm text-black placeholder-gray-500 focus:outline-none"
+                className="semantic-search__query-input"
               />
               <button
                 type="submit"
                 disabled={isSearching}
-                className="w-10 h-10 rounded-full bg-[#62D0F6] border border-black flex items-center justify-center shadow-md hover:bg-[#4bc3eb] disabled:opacity-50"
+                className="semantic-search__submit-button"
               >
                 <svg
-                  className="w-5 h-5 text-black"
+                  className="semantic-search__submit-icon"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -205,33 +203,33 @@ const handleCopy = async (format) => {
                 </svg>
               </button>
             </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="semantic-search__error">{error}</p>}
           </form>
 
           {/* Results Table matching Figma layout */}
           {results.length > 0 && (
-            <div className="border border-gray-300 overflow-hidden">
-              <table className="w-full text-left border-collapse">
+            <div className="semantic-search__table-wrapper">
+              <table className="semantic-search__results-table">
                 <thead>
-                  <tr className="bg-[#D9D9D9] border-b border-gray-300 text-black text-sm font-bold">
-                    <th className="p-3 w-1/4">Gene ID:</th>
-                    <th className="p-3 w-1/4 text-center">Similarity score:</th>
-                    <th className="p-3 w-2/4">Description:</th>
+                  <tr className="semantic-search__table-head-row">
+                    <th className="semantic-search__th semantic-search__th--id">Gene ID:</th>
+                    <th className="semantic-search__th semantic-search__th--score">Similarity score:</th>
+                    <th className="semantic-search__th semantic-search__th--description">Description:</th>
                   </tr>
                 </thead>
                 <tbody>
                   {results.map((res, idx) => (
                     <tr
                       key={idx}
-                      className="border-b border-gray-200 bg-[#F9F9F9] hover:bg-gray-100 text-sm text-black"
+                      className="semantic-search__table-row"
                     >
-                      <td className="p-3 font-normal">{res.Gene}</td>
-                      <td className="p-3 text-center font-normal">
+                      <td className="semantic-search__cell">{res.Gene}</td>
+                      <td className="semantic-search__cell semantic-search__cell--center">
                         {typeof res["Similarity score"] === "number"
                           ? res["Similarity score"].toFixed(2)
                           : res["Similarity score"]}
                       </td>
-                      <td className="p-3 font-normal">{res.Description}</td>
+                      <td className="semantic-search__cell">{res.Description}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -240,44 +238,44 @@ const handleCopy = async (format) => {
           )}
 
           {/* Footer Controls: Results counter + Copy & Close buttons */}
-          <div className="flex items-center justify-between pt-2">
-            <span className="text-sm text-black font-medium">
+          <div className="semantic-search__footer">
+            <span className="semantic-search__result-count">
               Number of results: {results.length}
             </span>
-            <div className="flex gap-3">
-              <div className="relative">
+            <div className="semantic-search__footer-actions">
+              <div className="semantic-search__copy-wrapper">
   <button
     type="button"
     onClick={() => setShowCopyMenu((prev) => !prev)}
     disabled={results.length === 0}
-    className="bg-[#D9D9D9] hover:bg-gray-300 border border-gray-400 text-black px-4 py-1.5 text-sm shadow-sm disabled:opacity-50 flex items-center gap-1"
+    className="semantic-search__copy-button"
   >
     <span>{copyStatus || "Copy..."}</span>
-    <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg className="semantic-search__copy-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
     </svg>
   </button>
 
   {showCopyMenu && (
-    <div className="absolute right-0 bottom-full mb-1 w-44 bg-white border border-gray-400 shadow-md z-10 flex flex-col">
+    <div className="semantic-search__copy-menu">
       <button
         type="button"
         onClick={() => handleCopy("table")}
-        className="text-left px-3 py-2 text-xs text-black hover:bg-gray-100 border-b border-gray-200"
+        className="semantic-search__copy-menu-item"
       >
         Copy table
       </button>
       <button
         type="button"
         onClick={() => handleCopy("ids")}
-        className="text-left px-3 py-2 text-xs text-black hover:bg-gray-100 border-b border-gray-200"
+        className="semantic-search__copy-menu-item"
       >
         Copy IDs only
       </button>
       <button
         type="button"
         onClick={() => handleCopy("json")}
-        className="text-left px-3 py-2 text-xs text-black hover:bg-gray-100"
+        className="semantic-search__copy-menu-item"
       >
         Copy in JSON format
       </button>
@@ -288,7 +286,7 @@ const handleCopy = async (format) => {
         <button
           type="button"
           onClick={() => setIsExpanded(false)}
-          className="bg-[#D9D9D9] hover:bg-gray-300 border border-gray-400 text-black px-4 py-1.5 text-sm shadow-sm"
+          className="semantic-search__close-button"
         >
           Close
         </button>

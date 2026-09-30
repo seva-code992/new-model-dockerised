@@ -1,72 +1,120 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import * as d3 from "d3";
-import { ChartView, FONT, addText, useChartTools } from "./ChartTools.jsx";
+import { ChartView, addText, frameLegend, useChartTools } from "./ChartTools.jsx";
 import { jaccard } from "./chartUtils.js";
 
-const W = 980, H = 640;
-const M = { t: 56, r: 190, b: 130, l: 150 };
-const TITLE = "Gene graph (click to rename)";
+const CHART_WIDTH = 980;
+const CHART_HEIGHT = 640;
+const MARGIN = { top: 56, right: 215, bottom: 130, left: 150 };
+const DEFAULT_TITLE = "Gene graph (click to rename)";
+const LEGEND_BAR = { width: 18, height: 200 };
+const MIN_CELL_SIZE_FOR_VALUE = 34;
 
-/** category: {id, name, groups: [{id, name, genes: [{id}]}]}. Cells hold the Jaccard index of gene IDs. */
+// The first entry is the default colour scale.
+const COLOR_SCALES = [
+  { key: "RdYlBu", label: "Red - Yellow - Blue", interpolator: d3.interpolateRdYlBu },
+  { key: "Spectral", label: "Spectral", interpolator: d3.interpolateSpectral },
+  { key: "Oranges", label: "Oranges", interpolator: d3.interpolateOranges },
+  { key: "PuBu", label: "Purple - Blue", interpolator: d3.interpolatePuBu },
+];
+
+const gradientCss = (interpolator) =>
+  `linear-gradient(to right, ${d3.quantize(interpolator, 8).join(", ")})`;
+
+/** categories[0].groups: [{id, name, genes: [{id}]}]. Every cell is the Jaccard index of two groups' gene IDs. */
 export default function Heatmap({ categories }) {
   const tools = useChartTools();
-  const { svgRef, zoomApi, labels, showTip, hideTip, stable } = tools;
+  const { svgRef, zoomApi, labels, showTooltip, hideTooltip, stable } = tools;
   const groups = categories[0]?.groups ?? [];
+  const [colorScaleKey, setColorScaleKey] = useState(COLOR_SCALES[0].key);
+  const [scaleMenuOpen, setScaleMenuOpen] = useState(false);
 
   useEffect(() => {
-    const L = (k, d) => labels[k] ?? d;
-    const iw = W - M.l - M.r, ih = H - M.t - M.b;
-    const size = Math.min(iw, ih);
+    const labelOf = (key, fallback) => labels[key] ?? fallback;
+    const groupName = (group) => labelOf(`group:${group.id}`, group.name);
+    const interpolator = COLOR_SCALES.find((scale) => scale.key === colorScaleKey).interpolator;
+    const colorScale = d3.scaleSequential(interpolator).domain([0, 1]);
+    const gridSize = Math.min(CHART_WIDTH - MARGIN.left - MARGIN.right, CHART_HEIGHT - MARGIN.top - MARGIN.bottom);
+    const cellScale = d3.scaleBand().domain(groups.map((group) => group.id)).range([0, gridSize]).padding(0.04);
+
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
-    svg.attr("font-family", FONT);
     zoomApi.current = null;
 
-    const name = (g) => L(`group:${g.id}`, g.name);
-    const scale = d3.scaleBand().domain(groups.map((g) => g.id)).range([0, size]).padding(0.04);
-    const color = d3.scaleSequential(d3.interpolateBlues).domain([0, 1]);
+    addText(svg, stable, { x: MARGIN.left + gridSize / 2, y: 30, text: labelOf("title", DEFAULT_TITLE), key: "title", className: "chart-title" });
+    addText(svg, stable, { x: MARGIN.left + gridSize / 2, y: MARGIN.top + gridSize + 110, text: labelOf("xlabel", "Groups"), key: "xlabel", className: "chart-axis-title" });
+    addText(svg, stable, { x: 18, y: MARGIN.top + gridSize / 2, text: labelOf("ylabel", "Groups"), key: "ylabel", className: "chart-axis-title", rotate: -90 });
 
-    addText(svg, stable, { x: M.l + size / 2, y: 30, text: L("title", TITLE), key: "title", anchor: "middle", size: 20, weight: "bold" });
-    addText(svg, stable, { x: M.l + size / 2, y: M.t + size + 110, text: L("xlabel", "Groups"), key: "xlabel", anchor: "middle", size: 13, weight: "bold" });
-    addText(svg, stable, { x: 18, y: M.t + size / 2, text: L("ylabel", "Groups"), key: "ylabel", anchor: "middle", size: 13, weight: "bold", rotate: -90 });
-
-    const g = svg.append("g").attr("transform", `translate(${M.l},${M.t})`);
-    groups.forEach((row) => {
-      groups.forEach((col) => {
-        const j = jaccard(row.genes.map((x) => x.id), col.genes.map((x) => x.id));
-        const x = scale(col.id), y = scale(row.id);
-        g.append("rect").attr("x", x).attr("y", y).attr("width", scale.bandwidth()).attr("height", scale.bandwidth())
-          .attr("fill", color(j.value))
-          .on("mousemove", (e) => showTip(e, [
-            `${name(row)} vs ${name(col)}`,
-            `Jaccard index: ${j.value.toFixed(4)}`,
-            `Common genes: ${j.inter} / ${j.union} in union`,
+    const grid = svg.append("g").attr("transform", `translate(${MARGIN.left},${MARGIN.top})`);
+    groups.forEach((rowGroup) => {
+      groups.forEach((columnGroup) => {
+        const overlap = jaccard(rowGroup.genes.map((gene) => gene.id), columnGroup.genes.map((gene) => gene.id));
+        const cellX = cellScale(columnGroup.id);
+        const cellY = cellScale(rowGroup.id);
+        const cellColor = colorScale(overlap.value);
+        grid.append("rect")
+          .attr("class", "heatmap__cell")
+          .attr("x", cellX).attr("y", cellY)
+          .attr("width", cellScale.bandwidth()).attr("height", cellScale.bandwidth())
+          .attr("fill", cellColor)
+          .on("mousemove", (event) => showTooltip(event, [
+            `${groupName(rowGroup)} vs ${groupName(columnGroup)}`,
+            `Jaccard index: ${overlap.value.toFixed(4)}`,
+            `Common genes: ${overlap.inter} of ${overlap.union} in the union`,
           ]))
-          .on("mouseleave", hideTip);
-        if (scale.bandwidth() > 34) {
-          g.append("text").attr("x", x + scale.bandwidth() / 2).attr("y", y + scale.bandwidth() / 2 + 4)
-            .attr("text-anchor", "middle").attr("font-size", 12).style("pointer-events", "none")
-            .attr("fill", j.value > 0.55 ? "#fff" : "#111").text(j.value.toFixed(2));
+          .on("mouseleave", hideTooltip);
+        if (cellScale.bandwidth() > MIN_CELL_SIZE_FOR_VALUE) {
+          const isDarkCell = d3.hcl(cellColor).l < 55;
+          grid.append("text")
+            .attr("class", `heatmap__cell-value ${isDarkCell ? "heatmap__cell-value--light" : "heatmap__cell-value--dark"}`)
+            .attr("x", cellX + cellScale.bandwidth() / 2)
+            .attr("y", cellY + cellScale.bandwidth() / 2 + 4)
+            .text(overlap.value.toFixed(2));
         }
       });
     });
-    groups.forEach((gr) => {
-      addText(g, stable, { x: -8, y: scale(gr.id) + scale.bandwidth() / 2 + 4, text: name(gr), key: `group:${gr.id}`, anchor: "end", size: 12 });
-      const cx = scale(gr.id) + scale.bandwidth() / 2;
-      addText(g, stable, { x: cx, y: size + 14, text: name(gr), key: `group:${gr.id}`, size: 12, rotate: 40 });
+    groups.forEach((group) => {
+      const centerOffset = cellScale(group.id) + cellScale.bandwidth() / 2;
+      addText(grid, stable, { x: -8, y: centerOffset + 4, text: groupName(group), key: `group:${group.id}`, className: "chart-tick-label chart-text--end" });
+      addText(grid, stable, { x: centerOffset, y: gridSize + 14, text: groupName(group), key: `group:${group.id}`, className: "chart-tick-label", rotate: 40 });
     });
 
-    // colour legend
-    const lx = W - M.r + 40;
-    const defs = svg.append("defs");
-    const grad = defs.append("linearGradient").attr("id", "heat-grad").attr("x1", 0).attr("x2", 0).attr("y1", 1).attr("y2", 0);
-    d3.range(0, 1.01, 0.1).forEach((t) => grad.append("stop").attr("offset", `${t * 100}%`).attr("stop-color", color(t)));
-    addText(svg, stable, { x: lx, y: M.t - 10, text: L("legend", "Jaccard index"), key: "legend", size: 13, weight: "bold" });
-    svg.append("rect").attr("x", lx).attr("y", M.t).attr("width", 18).attr("height", 200).attr("fill", "url(#heat-grad)").attr("stroke", "#111");
-    [0, 0.25, 0.5, 0.75, 1].forEach((t) => {
-      svg.append("text").attr("x", lx + 26).attr("y", M.t + 200 - t * 200 + 4).attr("font-size", 11).text(t.toFixed(2));
+    // colour legend; clicking the bar opens the colour-scale menu
+    const legend = svg.append("g").attr("transform", `translate(${CHART_WIDTH - MARGIN.right + 44},${MARGIN.top})`);
+    addText(legend, stable, { x: 0, y: -14, text: labelOf("legend", "Jaccard index"), key: "legend", className: "chart-legend-heading" });
+    const gradient = svg.append("defs").append("linearGradient")
+      .attr("id", "heatmap-legend-gradient").attr("x1", 0).attr("x2", 0).attr("y1", 1).attr("y2", 0);
+    d3.range(0, 1.01, 0.1).forEach((t) => gradient.append("stop").attr("offset", `${t * 100}%`).attr("stop-color", colorScale(t)));
+    legend.append("rect")
+      .attr("class", "heatmap__legend-bar")
+      .attr("width", LEGEND_BAR.width).attr("height", LEGEND_BAR.height)
+      .attr("fill", "url(#heatmap-legend-gradient)")
+      .on("click", () => setScaleMenuOpen((open) => !open))
+      .append("title").text("Click to change the colour scale");
+    const legendTicks = d3.scaleLinear().domain([0, 1]).range([LEGEND_BAR.height, 0]);
+    [0, 0.25, 0.5, 0.75, 1].forEach((tick) => {
+      legend.append("text").attr("class", "chart-tick-label").attr("x", LEGEND_BAR.width + 8).attr("y", legendTicks(tick) + 4).text(d3.format(".2f")(tick));
     });
-  }, [groups, labels, svgRef, zoomApi, showTip, hideTip, stable]);
+    legend.append("text").attr("class", "chart-hint-label").attr("x", 0).attr("y", LEGEND_BAR.height + 24).text("Click the bar to");
+    legend.append("text").attr("class", "chart-hint-label").attr("x", 0).attr("y", LEGEND_BAR.height + 38).text("change colours");
+    frameLegend(legend, 12);
+  }, [groups, labels, colorScaleKey, svgRef, zoomApi, showTooltip, hideTooltip, stable]);
 
-  return <ChartView tools={tools} width={W} height={H} />;
+  const scaleMenu = scaleMenuOpen && (
+    <div className="heatmap__scale-menu">
+      <div className="heatmap__scale-menu-title">Colour scale</div>
+      {COLOR_SCALES.map((scale) => (
+        <button
+          key={scale.key} type="button"
+          className={`heatmap__scale-option ${scale.key === colorScaleKey ? "heatmap__scale-option--active" : ""}`}
+          onClick={() => { setColorScaleKey(scale.key); setScaleMenuOpen(false); }}
+        >
+          <span className="heatmap__scale-preview" style={{ backgroundImage: gradientCss(scale.interpolator) }} />
+          {scale.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  return <ChartView tools={tools} width={CHART_WIDTH} height={CHART_HEIGHT} overlay={scaleMenu} />;
 }

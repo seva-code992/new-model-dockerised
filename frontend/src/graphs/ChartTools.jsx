@@ -1,102 +1,137 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { downloadPng, downloadSvg } from "./chartUtils.js";
 
-export const FONT = "Archivo, Arial, sans-serif";
-
-/** State shared by every chart: rename overlay, tooltip and label overrides. */
+/**
+ * State shared by every chart: rename box, hover tooltip and label overrides.
+ * `stable` only holds functions whose identity never changes, so d3 effects can depend on it.
+ */
 export function useChartTools() {
   const containerRef = useRef(null);
   const svgRef = useRef(null);
   const zoomApi = useRef(null);
-  const [tip, setTip] = useState(null);
-  const [edit, setEdit] = useState(null);
+  const [tooltip, setTooltip] = useState(null);
+  const [renameBox, setRenameBox] = useState(null);
   const [labels, setLabels] = useState({});
 
-  const showTip = useCallback((event, lines) => {
-    const r = containerRef.current.getBoundingClientRect();
-    setTip({ x: event.clientX - r.left + 14, y: event.clientY - r.top + 14, lines });
+  const showTooltip = useCallback((event, lines) => {
+    const containerRect = containerRef.current.getBoundingClientRect();
+    setTooltip({ x: event.clientX - containerRect.left + 14, y: event.clientY - containerRect.top + 14, lines });
   }, []);
-  const hideTip = useCallback(() => setTip(null), []);
+  const hideTooltip = useCallback(() => setTooltip(null), []);
 
-  const startEdit = useCallback((key, el, value) => {
-    const r = containerRef.current.getBoundingClientRect();
-    const b = el.getBoundingClientRect();
-    setTip(null);
-    setEdit({ key, value, x: b.left - r.left, y: b.top - r.top, w: Math.max(b.width + 24, 140), h: b.height });
+  const startRename = useCallback((key, element, value) => {
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const textRect = element.getBoundingClientRect();
+    setTooltip(null);
+    setRenameBox({
+      key,
+      value,
+      x: textRect.left - containerRect.left,
+      y: textRect.top - containerRect.top,
+      width: Math.max(textRect.width + 24, 140),
+      height: Math.max(textRect.height, 24),
+    });
   }, []);
 
-  const stable = useMemo(() => ({ startEdit }), [startEdit]); // identity never changes, safe for effect deps
+  const stable = useMemo(() => ({ startRename }), [startRename]);
 
-  return { stable, containerRef, svgRef, zoomApi, tip, edit, setEdit, labels, setLabels, showTip, hideTip, startEdit };
+  return {
+    stable, containerRef, svgRef, zoomApi,
+    tooltip, renameBox, setRenameBox, labels, setLabels,
+    showTooltip, hideTooltip, startRename,
+  };
 }
 
-/** Append an SVG text that opens the rename box when clicked. */
-export function addText(parent, tools, { x, y, text, key, anchor = "start", size = 12, weight = "normal", fill = "#111", rotate }) {
-  const t = parent
+/** Append an SVG text element that opens the rename box when clicked. Styling comes from CSS classes. */
+export function addText(parent, tools, { x, y, text, key, className = "", rotate }) {
+  const textElement = parent
     .append("text")
+    .attr("class", `chart-text chart-text--renamable ${className}`)
     .attr("x", x)
     .attr("y", y)
-    .attr("text-anchor", anchor)
-    .attr("font-family", FONT)
-    .attr("font-size", size)
-    .attr("font-weight", weight)
-    .attr("fill", fill)
-    .style("cursor", "text")
     .text(text)
-    .on("click", (event) => tools.startEdit(key, event.currentTarget, text));
-  if (rotate) t.attr("transform", `rotate(${rotate} ${x} ${y})`);
-  t.append("title").text("Click to rename");
-  return t;
+    .on("click", (event) => tools.startRename(key, event.currentTarget, text));
+  if (rotate) textElement.attr("transform", `rotate(${rotate} ${x} ${y})`);
+  textElement.append("title").text("Click to rename");
+  return textElement;
 }
 
-export function ChartView({ tools, width, height, children }) {
-  const { containerRef, svgRef, tip, edit, setEdit, setLabels, zoomApi } = tools;
+/** Draw a framed box behind an already-filled legend group. */
+export function frameLegend(legendGroup, padding = 10) {
+  const box = legendGroup.node().getBBox();
+  legendGroup
+    .insert("rect", ":first-child")
+    .attr("class", "chart-legend-frame")
+    .attr("x", box.x - padding)
+    .attr("y", box.y - padding)
+    .attr("width", box.width + padding * 2)
+    .attr("height", box.height + padding * 2);
+}
 
-  const commit = () => {
-    if (edit && edit.value.trim()) {
-      setLabels((l) => ({ ...l, [edit.key]: edit.value.trim() }));
+export function ChartView({ tools, width, height, toolbar, overlay }) {
+  const { containerRef, svgRef, tooltip, renameBox, setRenameBox, setLabels, zoomApi } = tools;
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+
+  const commitRename = () => {
+    if (renameBox && renameBox.value.trim()) {
+      setLabels((labels) => ({ ...labels, [renameBox.key]: renameBox.value.trim() }));
     }
-    setEdit(null);
+    setRenameBox(null);
   };
 
-  const btn = "bg-[#D9D9D9] hover:bg-gray-300 border border-gray-400 text-black px-3 py-1 text-xs shadow-sm";
+  const exportAs = (format) => {
+    setExportMenuOpen(false);
+    if (format === "svg") downloadSvg(svgRef.current);
+    else downloadPng(svgRef.current);
+  };
 
   return (
-    <div className="flex flex-col gap-2">
-      {children}
-      <div ref={containerRef} className="relative bg-white border border-gray-300 overflow-hidden">
-        <svg ref={svgRef} viewBox={`0 0 ${width} ${height}`} className="w-full h-auto select-none" />
-        {tip && (
-          <div
-            className="pointer-events-none absolute z-20 bg-black/85 text-white text-xs p-2 rounded max-w-xs"
-            style={{ left: tip.x, top: tip.y }}
-          >
-            {tip.lines.map((l, i) => (
-              <div key={i} className={i === 0 ? "font-bold" : ""}>{l}</div>
+    <div className="chart-view">
+      {toolbar}
+      <div ref={containerRef} className="chart-view__canvas">
+        <svg ref={svgRef} viewBox={`0 0 ${width} ${height}`} className="chart-view__svg" />
+        {overlay}
+        {tooltip && (
+          <div className="chart-tooltip" style={{ left: tooltip.x, top: tooltip.y }}>
+            {tooltip.lines.map((line, index) => (
+              <div key={index} className={index === 0 ? "chart-tooltip__heading" : ""}>{line}</div>
             ))}
           </div>
         )}
-        {edit && (
+        {renameBox && (
           <input
             autoFocus
-            value={edit.value}
-            onChange={(e) => setEdit({ ...edit, value: e.target.value })}
-            onBlur={commit}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") commit();
-              if (e.key === "Escape") setEdit(null);
+            value={renameBox.value}
+            onChange={(event) => setRenameBox({ ...renameBox, value: event.target.value })}
+            onBlur={commitRename}
+            onFocus={(event) => event.target.select()}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") commitRename();
+              if (event.key === "Escape") setRenameBox(null);
             }}
-            onFocus={(e) => e.target.select()}
-            className="absolute z-30 border border-black bg-white text-black text-sm px-1"
-            style={{ left: edit.x, top: edit.y, width: edit.w, height: Math.max(edit.h, 24) }}
+            className="chart-rename-input"
+            style={{ left: renameBox.x, top: renameBox.y, width: renameBox.width, height: renameBox.height }}
           />
         )}
       </div>
-      <div className="flex flex-wrap gap-2 items-center">
-        <button type="button" className={btn} onClick={() => zoomApi.current?.reset?.()}>Reset zoom</button>
-        <button type="button" className={btn} onClick={() => downloadSvg(svgRef.current)}>Download SVG</button>
-        <button type="button" className={btn} onClick={() => downloadPng(svgRef.current)}>Download PNG</button>
-        <span className="text-xs text-gray-500">Scroll to zoom, drag to pan, click any text to rename it.</span>
+      <div className="chart-view__actions">
+        <span className="chart-view__hint">Scroll to zoom, drag to pan, click any text to rename it.</span>
+        <div className="chart-view__buttons">
+          <button type="button" className="gm-button gm-button--small" onClick={() => zoomApi.current?.reset?.()}>
+            Reset zoom
+          </button>
+          <div className="export-menu">
+            <button type="button" className="gm-button gm-button--small" onClick={() => setExportMenuOpen((open) => !open)}>
+              Export as...
+            </button>
+            {exportMenuOpen && (
+              <div className="export-menu__list">
+                <button type="button" className="export-menu__item" onClick={() => exportAs("svg")}>SVG (vector)</button>
+                <button type="button" className="export-menu__item" onClick={() => exportAs("png")}>PNG (image)</button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

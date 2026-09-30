@@ -42,14 +42,14 @@ function ReportModal({ currentSpecies = "", currentQuery = "" }) {
   };
 
   return (
-    <div className="p-4 text-center">
+    <div className="report-modal">
       {/* Trigger text matching your UI screenshot */}
-      <p className="text-sm font-medium text-blue-700">
+      <p className="report-modal__prompt">
         Did you find a weird annotation or a dysfunctional feature?{" "}
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="underline font-semibold hover:text-blue-900"
+          className="report-modal__trigger"
         >
           Report it
         </button>{" "}
@@ -58,17 +58,17 @@ function ReportModal({ currentSpecies = "", currentQuery = "" }) {
 
       {/* Modal Overlay */}
       {isOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-md shadow-lg w-full max-w-md relative border border-gray-300 text-left">
+        <div className="report-modal__overlay">
+          <div className="report-modal__dialog">
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="absolute top-2 right-3 text-gray-500 hover:text-black font-bold"
+              className="report-modal__close-button"
             >
               ✕
             </button>
 
-            <h3 className="text-xl font-bold mb-3 text-black">What's wrong?</h3>
+            <h3 className="report-modal__title">What's wrong?</h3>
 
             <form onSubmit={handleSubmit}>
               <textarea
@@ -76,20 +76,20 @@ function ReportModal({ currentSpecies = "", currentQuery = "" }) {
                 onChange={(e) => setReportText(e.target.value)}
                 placeholder="Type here..."
                 rows={5}
-                className="w-full p-3 border border-gray-400 rounded focus:outline-none focus:border-purple-600 text-black text-sm resize-none"
+                className="report-modal__textarea"
               />
 
               {statusMessage && (
-                <p className="text-xs font-semibold my-2 text-purple-700">
+                <p className="report-modal__status">
                   {statusMessage}
                 </p>
               )}
 
-              <div className="mt-4 flex justify-start">
+              <div className="report-modal__actions">
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-1.5 bg-[#A0A0FF] text-black font-semibold text-sm rounded shadow hover:bg-purple-300 disabled:opacity-50"
+                  className="report-modal__submit-button"
                 >
                   {isSubmitting ? "Sending..." : "Submit"}
                 </button>
