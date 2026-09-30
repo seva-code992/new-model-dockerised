@@ -158,16 +158,16 @@ export default function KeywordSearch() {
   };
 
   return (
-    <div className="w-full bg-white border-4 border-[#CCCCCC] p-6 shadow-lg relative flex flex-col justify-between min-h-[150px]">
+    <div className="keyword-search">
       {/* Top Header Row */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="keyword-search__header">
         <div>
-          <h2 className="text-xl font-bold text-black">
+          <h2 className="keyword-search__title">
             Find about genes
           </h2>
 
           {!isExpanded && (
-            <p className="text-sm text-gray-500 mt-2">
+            <p className="keyword-search__description">
               Look for information about a single gene or a premade list of genes (IDs only).
             </p>
           )}
@@ -177,14 +177,12 @@ export default function KeywordSearch() {
         <button
           type="button"
           onClick={toggleExpanded}
-          className="text-[#0004FF] p-1 focus:outline-none shrink-0"
+          className="keyword-search__toggle-button"
           aria-label="Toggle Expand"
         >
           <svg
             viewBox="0 0 24 24"
-            className={`w-6 h-6 transition-transform duration-200 ${
-              isExpanded ? "" : "rotate-180"
-            }`}
+            className={`keyword-search__chevron${isExpanded ? " keyword-search__chevron--expanded" : ""}`}
             fill="none"
             stroke="currentColor"
             strokeWidth="2"
@@ -196,17 +194,17 @@ export default function KeywordSearch() {
 
       {/* Expanded Content Section */}
       {isExpanded && (
-        <div className="mt-4 flex flex-col gap-5">
-          <form onSubmit={handleSearch} className="flex flex-col gap-4">
+        <div className="keyword-search__panel">
+          <form onSubmit={handleSearch} className="keyword-search__form">
             {/* Species Select Bar matched with Semantic Search */}
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-bold text-black">
+            <div className="keyword-search__species-field">
+              <label className="keyword-search__label">
                 Species:
               </label>
               <select
                 value={species}
                 onChange={(e) => setSpecies(e.target.value)}
-                className="bg-[#E5E5E5] text-sm text-black px-3 py-1 rounded shadow-sm focus:outline-none border-none cursor-pointer"
+                className="keyword-search__select"
               >
                 {SPECIES_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -217,26 +215,26 @@ export default function KeywordSearch() {
             </div>
 
             {/* Search Pill Bar & Blue Button */}
-            <div className="flex items-center gap-3 w-full pr-1">
-              <div className="relative flex-1 flex items-center border border-black rounded-full shadow-[0px_4px_4px_rgba(0,0,0,0.25)] px-4 py-2 bg-white min-w-0">
+            <div className="keyword-search__search-row">
+              <div className="keyword-search__search-pill">
                 <input
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Type a gene ID, paste or upload an ID list..."
-                  className="w-full text-sm text-black text-left placeholder:text-[#64748B] focus:outline-none bg-transparent pr-2 min-w-0"
+                  className="keyword-search__query-input"
                 />
 
                 {/* Upload Button Dropdown */}
-                <div className="relative ml-2 shrink-0" ref={uploadMenuRef}>
+                <div className="keyword-search__upload-wrapper" ref={uploadMenuRef}>
                   <button
                     type="button"
                     onClick={() => setShowUploadMenu((prev) => !prev)}
-                    className="bg-[#D9D9D9] p-1.5 border border-black text-black hover:bg-gray-300 flex items-center justify-center rounded-sm"
+                    className="keyword-search__upload-button"
                     title="Upload or Paste ID list"
                   >
                     <svg
-                      className="w-3.5 h-3.5"
+                      className="keyword-search__upload-icon"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -252,13 +250,13 @@ export default function KeywordSearch() {
 
                     {/* Popover Dropup Menu */}
                     {showUploadMenu && (
-                    <div className="absolute right-0 bottom-full mb-2 w-52 bg-white border border-black shadow-lg z-20 flex flex-col text-xs font-sans">
+                    <div className="keyword-search__upload-menu">
                         <button
                         type="button"
                         onClick={handlePasteFromClipboard}
-                        className="text-left px-3 py-2 text-black hover:bg-[#D9D9D9] border-b border-gray-200 flex items-center gap-2"
+                        className="keyword-search__upload-menu-item"
                         >
-                        <svg className="w-4 h-4 shrink-0 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="keyword-search__upload-menu-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                         </svg>
                         <span>Paste list from clipboard</span>
@@ -266,9 +264,9 @@ export default function KeywordSearch() {
                         <button
                         type="button"
                         onClick={handleTriggerFileInput}
-                        className="text-left px-3 py-2 text-black hover:bg-[#D9D9D9] flex items-center gap-2"
+                        className="keyword-search__upload-menu-item"
                         >
-                        <svg className="w-4 h-4 shrink-0 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="keyword-search__upload-menu-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                         </svg>
                         <span>Upload file (.txt, .csv)</span>
@@ -281,7 +279,7 @@ export default function KeywordSearch() {
                     type="file"
                     accept=".txt,.csv"
                     onChange={handleFileUpload}
-                    className="hidden"
+                    className="keyword-search__file-input"
                   />
                 </div>
               </div>
@@ -290,10 +288,10 @@ export default function KeywordSearch() {
               <button
                 type="submit"
                 disabled={isSearching}
-                className="w-9 h-9 shrink-0 rounded-full bg-[#85D8FB] border border-black flex items-center justify-center hover:bg-[#62c3ea] shadow-sm disabled:opacity-50"
+                className="keyword-search__submit-button"
               >
                 <svg
-                  className="w-5 h-5 text-black"
+                  className="keyword-search__submit-icon"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -308,43 +306,43 @@ export default function KeywordSearch() {
               </button>
             </div>
 
-            {error && <p className="text-xs text-red-600">{error}</p>}
+            {error && <p className="keyword-search__error">{error}</p>}
           </form>
 
           {/* Results Table */}
           {results.length > 0 && (
-            <div className="overflow-x-auto border border-gray-200 mt-2">
-              <table className="w-full text-left border-collapse text-sm">
+            <div className="keyword-search__table-wrapper">
+              <table className="keyword-search__results-table">
                 <thead>
-                  <tr className="bg-[#E5E5E5] text-black font-semibold h-8">
-                    <th className="p-2 whitespace-nowrap">Gene ID</th>
-                    <th className="p-2 whitespace-nowrap">Description</th>
-                    <th className="p-2 whitespace-nowrap">Chromosome</th>
-                    <th className="p-2 whitespace-nowrap">Strand</th>
-                    <th className="p-2 whitespace-nowrap">Length</th>
-                    <th className="p-2 whitespace-nowrap">Start</th>
-                    <th className="p-2 whitespace-nowrap">End</th>
-                    <th className="p-2 whitespace-nowrap">PFAMs</th>
-                    <th className="p-2 whitespace-nowrap">GO terms</th>
-                    <th className="p-2 whitespace-nowrap">KEGG pathway</th>
+                  <tr className="keyword-search__table-head-row">
+                    <th className="keyword-search__th">Gene ID</th>
+                    <th className="keyword-search__th">Description</th>
+                    <th className="keyword-search__th">Chromosome</th>
+                    <th className="keyword-search__th">Strand</th>
+                    <th className="keyword-search__th">Length</th>
+                    <th className="keyword-search__th">Start</th>
+                    <th className="keyword-search__th">End</th>
+                    <th className="keyword-search__th">PFAMs</th>
+                    <th className="keyword-search__th">GO terms</th>
+                    <th className="keyword-search__th">KEGG pathway</th>
                   </tr>
                 </thead>
                 <tbody>
                   {results.map((item, idx) => (
                     <tr
                       key={idx}
-                      className="border-b border-gray-100 text-black font-normal h-8 hover:bg-gray-50"
+                      className="keyword-search__table-row"
                     >
-                      <td className="p-2 whitespace-nowrap">{item.Gene || "-"}</td>
-                      <td className="p-2 whitespace-nowrap">{item.Description || "-"}</td>
-                      <td className="p-2 whitespace-nowrap">{item.Chromosome || "-"}</td>
-                      <td className="p-2 whitespace-nowrap">{item.Strand || "-"}</td>
-                      <td className="p-2 whitespace-nowrap">{item.Length || "-"}</td>
-                      <td className="p-2 whitespace-nowrap">{item.Start || "-"}</td>
-                      <td className="p-2 whitespace-nowrap">{item.End || "-"}</td>
-                      <td className="p-2 whitespace-nowrap">{item.Pfams || "-"}</td>
-                      <td className="p-2 whitespace-nowrap">{item.GOs || "-"}</td>
-                      <td className="p-2 whitespace-nowrap">{item.KEGG || "-"}</td>
+                      <td className="keyword-search__cell">{item.Gene || "-"}</td>
+                      <td className="keyword-search__cell">{item.Description || "-"}</td>
+                      <td className="keyword-search__cell">{item.Chromosome || "-"}</td>
+                      <td className="keyword-search__cell">{item.Strand || "-"}</td>
+                      <td className="keyword-search__cell">{item.Length || "-"}</td>
+                      <td className="keyword-search__cell">{item.Start || "-"}</td>
+                      <td className="keyword-search__cell">{item.End || "-"}</td>
+                      <td className="keyword-search__cell">{item.Pfams || "-"}</td>
+                      <td className="keyword-search__cell">{item.GOs || "-"}</td>
+                      <td className="keyword-search__cell">{item.KEGG || "-"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -354,18 +352,18 @@ export default function KeywordSearch() {
 
           {/* Bottom Action Buttons */}
           {results?.length > 0 && (
-            <div className="flex justify-end gap-3 pt-2">
+            <div className="keyword-search__actions">
               <button
                 type="button"
                 onClick={handleCopyResults}
-                className="px-4 py-1 bg-[#D9D9D9] shadow-sm text-black text-xs font-semibold hover:bg-gray-300 rounded"
+                className="keyword-search__action-button"
               >
                 Copy
               </button>
               <button
                 type="button"
                 onClick={() => setIsExpanded(false)}
-                className="px-4 py-1 bg-[#D9D9D9] shadow-sm text-black text-xs font-semibold hover:bg-gray-300 rounded"
+                className="keyword-search__action-button"
               >
                 Close
               </button>

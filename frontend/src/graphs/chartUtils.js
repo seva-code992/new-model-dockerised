@@ -120,45 +120,69 @@ export async function parseXlsx(file) {
   }];
 }
 
+/** Turn gene objects back into the tab-separated table the editor understands. */
+export function genesToTable(genes) {
+  const rows = genes.map((gene) => `${gene.id}\t${gene.score ?? ""}\t${gene.description ?? ""}`);
+  return ["Gene ID\tSimilarity score\tDescription", ...rows].join("\n");
+}
+
 // ---- export ----------------------------------------------------------------
+
+// Styling lives in index.css, so an exported SVG/PNG needs the computed values written into it.
+const EXPORTED_STYLE_PROPERTIES = [
+  "fill", "stroke", "stroke-width", "stroke-dasharray", "opacity",
+  "font-family", "font-size", "font-weight", "letter-spacing", "text-anchor", "text-decoration",
+];
+
+function inlineComputedStyles(liveSvg, clonedSvg) {
+  const liveNodes = liveSvg.querySelectorAll("*");
+  const clonedNodes = clonedSvg.querySelectorAll("*");
+  liveNodes.forEach((liveNode, index) => {
+    const computed = getComputedStyle(liveNode);
+    EXPORTED_STYLE_PROPERTIES.forEach((property) => {
+      clonedNodes[index].style.setProperty(property, computed.getPropertyValue(property));
+    });
+  });
+}
 
 function serialize(svg) {
   const clone = svg.cloneNode(true);
+  inlineComputedStyles(svg, clone);
   clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-  const vb = svg.viewBox.baseVal;
-  const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-  bg.setAttribute("width", vb.width);
-  bg.setAttribute("height", vb.height);
-  bg.setAttribute("fill", "#ffffff");
-  clone.insertBefore(bg, clone.firstChild);
-  clone.setAttribute("width", vb.width);
-  clone.setAttribute("height", vb.height);
-  return { xml: new XMLSerializer().serializeToString(clone), w: vb.width, h: vb.height };
+  const viewBox = svg.viewBox.baseVal;
+  const background = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  background.setAttribute("width", viewBox.width);
+  background.setAttribute("height", viewBox.height);
+  background.style.setProperty("fill", "#ffffff");
+  clone.insertBefore(background, clone.firstChild);
+  clone.setAttribute("width", viewBox.width);
+  clone.setAttribute("height", viewBox.height);
+  return { xml: new XMLSerializer().serializeToString(clone), width: viewBox.width, height: viewBox.height };
 }
 
-function save(blob, name) {
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = name;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+function saveBlob(blob, fileName) {
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = fileName;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 }
 
-export function downloadSvg(svg, name = "gene-graph.svg") {
-  save(new Blob([serialize(svg).xml], { type: "image/svg+xml" }), name);
+export function downloadSvg(svg, fileName = "gene-graph.svg") {
+  saveBlob(new Blob([serialize(svg).xml], { type: "image/svg+xml" }), fileName);
 }
 
-export function downloadPng(svg, name = "gene-graph.png") {
-  const { xml, w, h } = serialize(svg);
-  const img = new Image();
-  img.onload = () => {
+export function downloadPng(svg, fileName = "gene-graph.png") {
+  const { xml, width, height } = serialize(svg);
+  const image = new Image();
+  image.onload = () => {
     const canvas = document.createElement("canvas");
-    canvas.width = w * 2;
-    canvas.height = h * 2;
-    const ctx = canvas.getContext("2d");
-    ctx.scale(2, 2);
-    ctx.drawImage(img, 0, 0, w, h);
-    canvas.toBlob((b) => save(b, name), "image/png");
+    canvas.width = width * 2;
+    canvas.height = height * 2;
+    const context = canvas.getContext("2d");
+    context.scale(2, 2);
+    context.drawImage(image, 0, 0, width, height);
+    canvas.toBlob((blob) => saveBlob(blob, fileName), "image/png");
   };
-  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(xml);
+  image.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(xml);
 }

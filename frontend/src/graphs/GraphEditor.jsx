@@ -1,238 +1,239 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { PALETTE, parseJsonGenes, parseTable, uid } from "./chartUtils.js";
 
-const btn = "bg-[#D9D9D9] hover:bg-gray-300 border border-gray-400 text-black px-4 py-1.5 text-sm shadow-sm disabled:opacity-50";
-const input = "border border-gray-400 bg-white px-2 py-1 text-sm text-black focus:outline-none";
+// ---- text shown to the user ------------------------------------------------
 
-/** Parse a pasted box according to the plot type. */
-function parseFor(type, text) {
-  if (type === "network") return parseJsonGenes(text);
-  return parseTable(text, { allowIds: type === "heatmap" });
+const PASTE_HINT = {
+  bar: "Paste your data copied from the above features (copied as tables only).",
+  heatmap: "Paste a table (or a list of gene IDs) copied from the above features.",
+  network: "Paste your data copied from the Semantic search (copied in JSON format only).",
+};
+const FIRST_GROUP_HINT = {
+  bar: "<DATA PASTED HERE BEFORE PRESSING TO ADD CATEGORY>",
+  heatmap: "Paste a table copied from the above search features.",
+  network: "Paste the JSON copied from the Semantic search.",
+};
+const NEW_GROUP_HINT = {
+  bar: "Paste a new table copied from the above search features.",
+  heatmap: "Paste a new table copied from the above search features.",
+  network: "Paste another JSON copied from the Semantic search.",
+};
+
+// ---- helpers -------------------------------------------------------------
+
+/** Read pasted text the way the chosen graph needs it. */
+function parsePastedData(plotType, text) {
+  if (plotType === "network") return parseJsonGenes(text);
+  return parseTable(text, { allowIds: plotType === "heatmap" });
 }
 
-function PasteBox({ type, onAdd, label, placeholder }) {
-  const [text, setText] = useState("");
-  const [error, setError] = useState("");
-  const add = () => {
-    const res = parseFor(type, text);
-    if (!text.trim()) return setError("Paste some data first.");
-    if (res.error) return setError(res.error);
-    setError("");
-    setText("");
-    onAdd(text, res);
+function makeGroup(plotType, groupNumber, text = "") {
+  return {
+    id: uid(),
+    name: plotType === "network" ? `Query${groupNumber}-Species${groupNumber}` : `Group${groupNumber}`,
+    color: PALETTE[(groupNumber - 1) % PALETTE.length],
+    text,
   };
-  return (
-    <div className="border-2 border-dashed border-gray-400 p-3 flex flex-col gap-2 min-w-[240px] flex-1 bg-white">
-      <div className="text-sm font-bold text-black">{label}</div>
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        rows={5}
-        placeholder={placeholder}
-        className={`${input} font-mono text-xs w-full`}
-      />
-      {error && <p className="text-xs text-red-600">{error}</p>}
-      <button type="button" onClick={add} className={`${btn} self-start`} aria-label="Add">
-        <span className="font-bold text-lg leading-none">+</span>
-      </button>
-    </div>
-  );
 }
 
-function GroupBox({ type, group, onChange, onRemove, canRemove }) {
-  const res = parseFor(type, group.text);
+function makeCategory(categoryNumber, groups) {
+  return { id: uid(), name: `Category${categoryNumber}`, groups };
+}
+
+// ---- small components ----------------------------------------------------
+
+function DataSummary({ plotType, text }) {
+  const parsed = useMemo(() => parsePastedData(plotType, text), [plotType, text]);
+  if (!text.trim()) return null;
+  if (parsed.error) return <p className="editor__message editor__message--error">{parsed.error}</p>;
+  const origin = [parsed.query && `query: ${parsed.query}`, parsed.species].filter(Boolean).join(" · ");
+  return <p className="editor__message">{parsed.genes.length} genes{origin ? ` · ${origin}` : ""}</p>;
+}
+
+/** A coloured box to paste one dataset into. Its colour chip opens the colour picker. */
+function GroupBox({ plotType, group, placeholder, showColor, canRemove, onChange, onRemove }) {
   return (
-    <div className="border border-gray-400 p-3 flex flex-col gap-2 min-w-[240px] flex-1 bg-white">
-      <div className="flex items-center gap-2">
+    <div className="editor-group">
+      <div className="editor-group__heading">
         <input
-          value={group.name}
-          onChange={(e) => onChange({ ...group, name: e.target.value })}
-          className={`${input} flex-1 font-bold`}
-          aria-label="Group name"
+          className="editor-group__name" value={group.name} aria-label="Group name"
+          onChange={(event) => onChange({ ...group, name: event.target.value })}
         />
-        {type === "bar" && (
-          <input
-            type="color" value={group.color}
-            onChange={(e) => onChange({ ...group, color: e.target.value })}
-            className="w-8 h-8 p-0 border border-gray-400 cursor-pointer" title="Group colour"
-          />
-        )}
+        <span className="editor-group__rename-hint">(Click to rename)</span>
         {canRemove && (
-          <button type="button" onClick={onRemove} className="text-red-600 font-bold px-1" title="Remove group">×</button>
+          <button type="button" className="editor__remove-button" title="Remove group" onClick={onRemove}>×</button>
         )}
       </div>
-      <textarea
-        value={group.text}
-        onChange={(e) => onChange({ ...group, text: e.target.value })}
-        rows={5}
-        className={`${input} font-mono text-xs w-full`}
-      />
-      {res.error ? (
-        <p className="text-xs text-red-600">{res.error}</p>
-      ) : (
-        <p className="text-xs text-gray-600">{res.genes.length} genes</p>
-      )}
+      <div className="editor-group__box" style={{ "--group-color": group.color }}>
+        {showColor && (
+          <>
+            <input
+              className="editor-group__frame-picker" type="color" value={group.color}
+              aria-label="Group colour (click the coloured frame)" title="Click the coloured frame to choose a colour"
+              onChange={(event) => onChange({ ...group, color: event.target.value })}
+            />
+            <span className="editor-group__color-chip">Click frame to pick colour</span>
+          </>
+        )}
+        <textarea
+          className="editor-group__textarea" value={group.text} placeholder={placeholder} spellCheck={false}
+          onChange={(event) => onChange({ ...group, text: event.target.value })}
+        />
+      </div>
+      <DataSummary plotType={plotType} text={group.text} />
     </div>
   );
 }
+
+// ---- the editor ----------------------------------------------------------
 
 /**
- * Editor: paste data, press + to turn it into a category, Save it, repeat.
- * bar / heatmap categories hold named groups; network categories are a single JSON with one colour.
+ * plotType: "bar" | "heatmap" | "network"
+ * seedCategories: optional [{id, name, groups: [{id, name, color, text}]}] to start from.
+ *
+ * Bar plot:  starts as one big paste box (+ "Customize" colour); "Add category and groups" turns it
+ *            into Category1/Group1 and unlocks several categories with several groups each.
+ * Heatmap and network plot: always work with groups only (a single hidden category).
  */
-export default function GraphEditor({ type, onGenerate, onBack }) {
-  const [categories, setCategories] = useState([]);
-  const [draft, setDraft] = useState(null);
-  const [draftIndex, setDraftIndex] = useState(null);
-  const [error, setError] = useState("");
+export default function GraphEditor({ plotType, seedCategories, onGenerate, onExit }) {
+  const groupsOnly = plotType !== "bar";
+  const [isStructured, setIsStructured] = useState(groupsOnly || !!seedCategories);
+  const [singleText, setSingleText] = useState("");
+  const [singleColor, setSingleColor] = useState(PALETTE[0]);
+  const [categories, setCategories] = useState(
+    () => seedCategories ?? (groupsOnly ? [makeCategory(1, [makeGroup(plotType, 1)])] : []),
+  );
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const grouped = type !== "network";
-  const single = type === "heatmap";
-  const nextNo = categories.length + 1;
-  const table = type === "network" ? "JSON" : "table";
+  // ---- changing the structure ----
+  const switchToCategories = () => {
+    setErrorMessage("");
+    setCategories([makeCategory(1, [{ ...makeGroup(plotType, 1, singleText), color: singleColor }])]);
+    setIsStructured(true);
+  };
+  const addCategory = () => {
+    const number = categories.length + 1;
+    setCategories([...categories, makeCategory(number, [makeGroup(plotType, 1)])]);
+  };
+  const updateCategory = (categoryId, changes) =>
+    setCategories(categories.map((category) => (category.id === categoryId ? { ...category, ...changes } : category)));
+  const removeCategory = (categoryId) =>
+    setCategories(categories.filter((category) => category.id !== categoryId));
+  const addGroup = (category) =>
+    updateCategory(category.id, { groups: [...category.groups, makeGroup(plotType, category.groups.length + 1)] });
+  const updateGroup = (category, updatedGroup) =>
+    updateCategory(category.id, { groups: category.groups.map((group) => (group.id === updatedGroup.id ? updatedGroup : group)) });
+  const removeGroup = (category, groupId) =>
+    updateCategory(category.id, { groups: category.groups.filter((group) => group.id !== groupId) });
 
-  const startDraft = (text) => {
-    setError("");
-    setDraftIndex(null);
-    setDraft(grouped
-      ? { id: uid(), name: `Category${nextNo}`, groups: [{ id: uid(), name: "Group1", color: PALETTE[0], text }] }
-      : { id: uid(), name: `Query${nextNo}-Species${nextNo}`, color: PALETTE[(nextNo - 1) % PALETTE.length], text });
+  // ---- turning the pasted text into graph data ----
+  const parseGroup = (group) => {
+    const parsed = parsePastedData(plotType, group.text);
+    if (!group.text.trim()) return { error: `"${group.name}" is empty. Paste data into it or remove it.` };
+    if (parsed.error) return { error: `"${group.name}": ${parsed.error}` };
+    return { group: { id: group.id, name: group.name, color: group.color, genes: parsed.genes } };
   };
 
-  const addGroup = (text) => {
-    const n = draft.groups.length;
-    setDraft({ ...draft, groups: [...draft.groups, { id: uid(), name: `Group${n + 1}`, color: PALETTE[n % PALETTE.length], text }] });
+  const saveAndGenerate = () => {
+    const sourceCategories = isStructured
+      ? categories
+      : [makeCategory(1, [{ ...makeGroup(plotType, 1, singleText), color: singleColor }])];
+
+    const parsedCategories = sourceCategories.map((category) => ({
+      category,
+      parsedGroups: category.groups.map(parseGroup),
+    }));
+    const firstError = parsedCategories.flatMap((entry) => entry.parsedGroups).find((entry) => entry.error);
+    if (firstError) return setErrorMessage(firstError.error);
+
+    const readyCategories = parsedCategories.map(({ category, parsedGroups }) => ({
+      id: category.id,
+      name: category.name,
+      groups: parsedGroups.map((entry) => entry.group),
+    }));
+    const groupCount = readyCategories.reduce((total, category) => total + category.groups.length, 0);
+    if (!readyCategories.length || !groupCount) return setErrorMessage("Paste some data first.");
+    if (plotType === "heatmap" && groupCount < 2) return setErrorMessage("A heatmap needs two or more groups. Press + to add another group.");
+
+    setErrorMessage("");
+    onGenerate(readyCategories);
   };
 
-  const save = () => {
-    let saved;
-    if (grouped) {
-      const groups = draft.groups.map((g) => ({ ...g, genes: parseFor(type, g.text).genes, err: parseFor(type, g.text).error }));
-      if (groups.some((g) => g.err || !g.genes.length)) return setError("Every group needs valid, non-empty data.");
-      if (type === "heatmap" && groups.length < 2) return setError("A heatmap needs at least two groups.");
-      saved = { ...draft, groups: groups.map(({ err, ...g }) => g) };
-    } else {
-      const res = parseFor(type, draft.text);
-      if (res.error || !res.genes.length) return setError(res.error || "Paste valid JSON first.");
-      saved = { ...draft, genes: res.genes, query: res.query, species: res.species };
-    }
-    setCategories((cs) => (draftIndex === null ? [...cs, saved] : cs.map((c, i) => (i === draftIndex ? saved : c))));
-    setDraft(null);
-    setError("");
-  };
-
-  const edit = (i) => {
-    const c = categories[i];
-    setError("");
-    setDraftIndex(i);
-    setDraft(grouped
-      ? { ...c, groups: c.groups.map((g) => ({ ...g, text: g.text ?? "" })) }
-      : { ...c });
-  };
-
-  const canGenerate = categories.length >= 1 && !draft;
-  const canAdd = !draft && !(single && categories.length >= 1);
-
+  // ---- rendering ----
   return (
-    <div className="border-2 border-gray-400 bg-[#F4F4F4] p-4 flex flex-col gap-4">
-      <div className="flex justify-between items-center">
-        <h3 className="font-bold text-black">Editor</h3>
-        <button type="button" onClick={onBack} className="text-sm text-[#0004FF] underline">← Back to options</button>
-      </div>
+    <div className="editor">
+      <h3 className="editor__title">Editor</h3>
 
-      <p className="text-xs text-gray-700">
-        {type === "network"
-          ? "Paste the JSON from Semantic search (Copy → Copy in JSON format), press +, then save the category. Each category gets its own colour."
-          : type === "heatmap"
-            ? "Paste a table (or a list of gene IDs) for each group. A category with at least two groups is required."
-            : "Paste the table from Semantic search (Copy → Copy table), press + to make it a category, add more groups next to it, then save."}
-      </p>
-
-      {/* saved categories */}
-      {categories.map((c, i) => (
-        <div key={c.id} className="bg-white border border-gray-300 p-3 flex items-center justify-between gap-3">
-          <div className="text-sm text-black">
-            {!grouped && <span className="inline-block w-3 h-3 rounded-full mr-2 border border-black" style={{ background: c.color }} />}
-            <b>{c.name}</b>{" "}
-            <span className="text-gray-600">
-              {grouped ? `— ${c.groups.map((g) => `${g.name} (${g.genes.length})`).join(", ")}` : `— ${c.genes.length} genes`}
-            </span>
-          </div>
-          <div className="flex gap-2">
-            <button type="button" className={btn} onClick={() => edit(i)} disabled={!!draft}>Edit</button>
-            <button type="button" className={btn} onClick={() => setCategories((cs) => cs.filter((_, k) => k !== i))} disabled={!!draft}>Delete</button>
-          </div>
-        </div>
-      ))}
-
-      {/* category being edited */}
-      {draft && (
-        <div className="bg-white border-2 border-black p-3 flex flex-col gap-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <input
-              value={draft.name}
-              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-              className={`${input} font-bold text-base`} aria-label="Category name"
-            />
-            {!grouped && (
+      {!isStructured && (
+        <>
+          <div className="editor__toolbar">
+            <label className="gm-button gm-button--customize">
+              Customize
+              <span className="gm-button__swatch" style={{ "--swatch-color": singleColor }} />
               <input
-                type="color" value={draft.color}
-                onChange={(e) => setDraft({ ...draft, color: e.target.value })}
-                className="w-8 h-8 p-0 border border-gray-400 cursor-pointer" title="Category colour"
+                className="editor__hidden-input" type="color" value={singleColor} aria-label="Dataset colour"
+                onChange={(event) => setSingleColor(event.target.value)}
               />
-            )}
-            <span className="text-xs text-gray-500">(rename the category)</span>
+            </label>
+            <button type="button" className="gm-button gm-button--add-category" onClick={switchToCategories}>
+              + Add category and groups
+            </button>
           </div>
+          <div className="editor__paste-area">
+            <textarea
+              className="editor__paste-textarea" value={singleText} placeholder={PASTE_HINT[plotType]} spellCheck={false}
+              onChange={(event) => setSingleText(event.target.value)}
+            />
+          </div>
+          <DataSummary plotType={plotType} text={singleText} />
+        </>
+      )}
 
-          {grouped ? (
-            <div className="flex flex-wrap gap-3 items-stretch">
-              {draft.groups.map((g, gi) => (
-                <GroupBox
-                  key={g.id} type={type} group={g}
-                  canRemove={draft.groups.length > 1}
-                  onChange={(ng) => setDraft({ ...draft, groups: draft.groups.map((x, k) => (k === gi ? ng : x)) })}
-                  onRemove={() => setDraft({ ...draft, groups: draft.groups.filter((_, k) => k !== gi) })}
+      {isStructured && categories.map((category, categoryIndex) => (
+        <section key={category.id} className="editor-category">
+          {!groupsOnly && (
+            <div className="editor-category__header">
+              <div className="editor-category__pill">
+                <input
+                  className="editor-category__name" value={category.name} aria-label="Category name"
+                  onChange={(event) => updateCategory(category.id, { name: event.target.value })}
                 />
-              ))}
-              <PasteBox type={type} onAdd={addGroup} label={`Add Group${draft.groups.length + 1}`} placeholder={`Paste another ${table} here`} />
+                <span className="editor-group__rename-hint">(Click to rename)</span>
+                {categories.length > 1 && (
+                  <button type="button" className="editor__remove-button" title="Remove category" onClick={() => removeCategory(category.id)}>×</button>
+                )}
+              </div>
+              {categoryIndex === categories.length - 1 && (
+                <button type="button" className="gm-button gm-button--add-another-category" onClick={addCategory}>
+                  + Add another category
+                </button>
+              )}
             </div>
-          ) : (
-            <>
-              <textarea
-                value={draft.text} rows={6}
-                onChange={(e) => setDraft({ ...draft, text: e.target.value })}
-                className={`${input} font-mono text-xs w-full`}
-              />
-              {(() => {
-                const r = parseFor(type, draft.text);
-                return r.error
-                  ? <p className="text-xs text-red-600">{r.error}</p>
-                  : <p className="text-xs text-gray-600">{r.genes.length} genes{r.query ? ` · query: ${r.query}` : ""}{r.species ? ` · ${r.species}` : ""}</p>;
-              })()}
-            </>
           )}
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <div className="flex gap-2">
-            <button type="button" className={btn} onClick={save}>Save</button>
-            <button type="button" className={btn} onClick={() => { setDraft(null); setError(""); }}>Cancel</button>
+          <div className="editor-category__groups">
+            {category.groups.map((group, groupIndex) => (
+              <GroupBox
+                key={group.id} plotType={plotType} group={group}
+                placeholder={groupIndex === 0 && !group.text ? FIRST_GROUP_HINT[plotType] : NEW_GROUP_HINT[plotType]}
+                showColor={plotType !== "heatmap"}
+                canRemove={category.groups.length > 1}
+                onChange={(updatedGroup) => updateGroup(category, updatedGroup)}
+                onRemove={() => removeGroup(category, group.id)}
+              />
+            ))}
+            <button type="button" className="editor__add-group-button" title="Add a group" aria-label="Add a group" onClick={() => addGroup(category)}>
+              +
+            </button>
           </div>
-        </div>
-      )}
+        </section>
+      ))}
 
-      {canAdd && (
-        <PasteBox
-          type={type} onAdd={startDraft}
-          label={categories.length ? `Paste a ${table} to start Category${nextNo}` : `Paste your ${table} here`}
-          placeholder={type === "network" ? '{"query": "...", "genes": [...]}' : "Gene ID\tSimilarity score\tDescription"}
-        />
-      )}
+      {errorMessage && <p className="editor__message editor__message--error editor__message--block">{errorMessage}</p>}
 
-      <div>
-        <button type="button" className={`${btn} bg-[#62D0F6] hover:bg-[#4bc3eb]`} disabled={!canGenerate} onClick={() => onGenerate(categories)}>
-          Generate graph
-        </button>
-        {categories.length > 0 && draft && <span className="ml-3 text-xs text-gray-600">Save the open category first.</span>}
+      <div className="editor__footer">
+        <button type="button" className="gm-button gm-button--primary" onClick={saveAndGenerate}>Save and generate graph</button>
+        <button type="button" className="gm-button" onClick={onExit}>Exit editor without saving</button>
       </div>
     </div>
   );
