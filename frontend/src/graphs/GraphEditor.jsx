@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { PALETTE, parseJsonGenes, parseTable, uid } from "./chartUtils.js";
+import { parseJsonGenes, parseTable, randomColor, uid } from "./chartUtils.js";
 
 // ---- text shown to the user ------------------------------------------------
 
@@ -38,19 +38,23 @@ function NameInput({ value, defaultName, onChange, className, label }) {
   );
 }
 
-function makeGroup(plotType, groupNumber, text = "") {
-  const defaultName = plotType === "network" ? `Query${groupNumber}-Species${groupNumber}` : `Group${groupNumber}`;
-  return {
-    id: uid(),
-    defaultName,
-    name: defaultName,
-    color: PALETTE[(groupNumber - 1) % PALETTE.length],
-    text,
-  };
+/** The first "Prefix1", "Prefix2", ... name that none of the siblings already uses. */
+function nextFreeName(makeName, siblings) {
+  const used = new Set(siblings.flatMap((sibling) => [sibling.name, sibling.defaultName]));
+  let number = 1;
+  while (used.has(makeName(number))) number++;
+  return makeName(number);
 }
 
-function makeCategory(categoryNumber, groups) {
-  const defaultName = `Category${categoryNumber}`;
+/** A new dataset gets the next free default name and a random colour unlike the ones already used. */
+function makeGroup(plotType, siblingGroups, takenColors, text = "") {
+  const makeName = (number) => (plotType === "network" ? `Query${number}-Species${number}` : `Group${number}`);
+  const defaultName = nextFreeName(makeName, siblingGroups);
+  return { id: uid(), defaultName, name: defaultName, color: randomColor(takenColors), text };
+}
+
+function makeCategory(siblingCategories, groups) {
+  const defaultName = nextFreeName((number) => `Category${number}`, siblingCategories);
   return { id: uid(), defaultName, name: defaultName, groups };
 }
 
@@ -114,28 +118,29 @@ export default function GraphEditor({ plotType, seedCategories, onGenerate, onEx
   const groupsOnly = plotType !== "bar";
   const [isStructured, setIsStructured] = useState(groupsOnly || !!seedCategories);
   const [singleText, setSingleText] = useState("");
-  const [singleColor, setSingleColor] = useState(PALETTE[0]);
+  const [singleColor, setSingleColor] = useState(() => randomColor());
   const [categories, setCategories] = useState(
-    () => seedCategories ?? (groupsOnly ? [makeCategory(1, [makeGroup(plotType, 1)])] : []),
+    () => seedCategories ?? (groupsOnly ? [makeCategory([], [makeGroup(plotType, [], [])])] : []),
   );
   const [errorMessage, setErrorMessage] = useState("");
+
+  const colorsInUse = categories.flatMap((category) => category.groups.map((group) => group.color));
 
   // ---- changing the structure ----
   const switchToCategories = () => {
     setErrorMessage("");
-    setCategories([makeCategory(1, [{ ...makeGroup(plotType, 1, singleText), color: singleColor }])]);
+    setCategories([makeCategory([], [{ ...makeGroup(plotType, [], [], singleText), color: singleColor }])]);
     setIsStructured(true);
   };
   const addCategory = () => {
-    const number = categories.length + 1;
-    setCategories([...categories, makeCategory(number, [makeGroup(plotType, 1)])]);
+    setCategories([...categories, makeCategory(categories, [makeGroup(plotType, [], colorsInUse)])]);
   };
   const updateCategory = (categoryId, changes) =>
     setCategories(categories.map((category) => (category.id === categoryId ? { ...category, ...changes } : category)));
   const removeCategory = (categoryId) =>
     setCategories(categories.filter((category) => category.id !== categoryId));
   const addGroup = (category) =>
-    updateCategory(category.id, { groups: [...category.groups, makeGroup(plotType, category.groups.length + 1)] });
+    updateCategory(category.id, { groups: [...category.groups, makeGroup(plotType, category.groups, colorsInUse)] });
   const updateGroup = (category, updatedGroup) =>
     updateCategory(category.id, { groups: category.groups.map((group) => (group.id === updatedGroup.id ? updatedGroup : group)) });
   const removeGroup = (category, groupId) =>
@@ -152,7 +157,7 @@ export default function GraphEditor({ plotType, seedCategories, onGenerate, onEx
   const saveAndGenerate = () => {
     const sourceCategories = isStructured
       ? categories
-      : [makeCategory(1, [{ ...makeGroup(plotType, 1, singleText), color: singleColor }])];
+      : [makeCategory([], [{ ...makeGroup(plotType, [], [], singleText), color: singleColor }])];
 
     const parsedCategories = sourceCategories.map((category) => ({
       category,

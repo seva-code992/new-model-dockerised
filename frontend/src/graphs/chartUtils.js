@@ -1,9 +1,32 @@
+import * as d3 from "d3";
+
 // Shared helpers for the Graph maker: colours, parsing of pasted data, maths.
 
 export const PALETTE = [
   "#0072B2", "#E69F00", "#009E73", "#D55E00",
   "#CC79A7", "#56B4E9", "#F0E442", "#000000",
 ];
+
+/**
+ * A random colour for a newly added dataset. Several random hues are tried and the one farthest
+ * from the colours already in use wins, so new datasets are always easy to tell apart.
+ */
+export function randomColor(takenColors = []) {
+  const CANDIDATES = 4;
+  const takenHues = takenColors.map((color) => d3.hsl(color).h).filter(Number.isFinite);
+  const hueDistance = (a, b) => {
+    const gap = Math.abs(a - b) % 360;
+    return Math.min(gap, 360 - gap);
+  };
+  let bestHue = Math.random() * 360;
+  let bestGap = -1;
+  for (let attempt = 0; attempt < CANDIDATES; attempt++) {
+    const hue = Math.random() * 360;
+    const gap = takenHues.length ? Math.min(...takenHues.map((taken) => hueDistance(taken, hue))) : 360;
+    if (gap > bestGap) { bestHue = hue; bestGap = gap; }
+  }
+  return d3.hsl(bestHue, 0.65, 0.45).formatHex();
+}
 
 export const uid = () => Math.random().toString(36).slice(2, 10);
 
