@@ -114,10 +114,21 @@
 
 .network__canvas { fill: #FAFAFA; stroke: #CCCCCC; stroke-width: 1; }
 .network__edge { stroke: #000000; stroke-opacity: 1; stroke-linecap: round; }
-.network__node { stroke: none; cursor: grab; }
+/* nodes: a very faint outline; lines are drawn behind them */
+.network__node { stroke: rgba(0, 0, 0, 0.22); stroke-width: 1.5px; cursor: grab; }
 .network__node:active { cursor: grabbing; }
-.network__node:hover { r: 11px; }
-.network__legend-dot { stroke: var(--color-text); stroke-width: 1; }
+.network__node:hover { r: 15px; }
+.network__legend-dot { stroke: var(--color-text); stroke-width: 1; cursor: pointer; }
+.network__legend-dot--hidden { fill-opacity: 0.15; stroke-opacity: 0.4; }
+.chart-legend-label--hidden { fill: var(--color-muted); text-decoration: line-through; }
+/* gene highlighted from a box: dark ring and a red arrow pointing at it */
+.network__highlight { pointer-events: none; }
+.network__highlight-ring { fill: none; stroke: var(--color-text); stroke-width: 3px; }
+.network__highlight-arrow { fill: #e31a1c; stroke: var(--color-white); stroke-width: 1.5px; stroke-linejoin: round; }
+/* gene names inside the boxes */
+.chart-gene-link { cursor: pointer; }
+.chart-gene-link:hover { text-decoration: underline; }
+.chart-gene-link--active { font-weight: 700; fill: #e31a1c; }
 .chart-link { font-size: 11px; fill: var(--color-link); text-anchor: start; text-decoration: underline; cursor: pointer; }
 
 /* ---- controls above a chart (network threshold, heatmap measure) ---- */
