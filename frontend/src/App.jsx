@@ -1,8 +1,8 @@
 import React from 'react'
-import SemanticSearch from './SemanticSearch.jsx'
-import KeywordSearch from './KeywordSearch.jsx'
-import ReportModal from './ReportModal.jsx'
-import GraphMaker from './GraphMaker.jsx'
+import SemanticSearch from './features/semantic-search/SemanticSearch.jsx'
+import KeywordSearch from './features/keyword-search/KeywordSearch.jsx'
+import ReportModal from './features/report/ReportModal.jsx'
+import GraphMaker from './features/graph-maker/GraphMaker.jsx'
 
 export default function App() {
   return (
@@ -26,16 +26,12 @@ export default function App() {
         <KeywordSearch />
 
         {/* Card 3: Verify your results */}
-        <div className="app__verify-card">
-          <div>
-            <h2 className="app__verify-title">
-              Verify your results
-            </h2>
-            <p className="app__verify-note">
-              Feature is under development - Not usable yet.
-            </p>
-          </div>
-        </div>
+        <section className="card">
+          <h2 className="card__title">Verify your results</h2>
+          <p className="app__verify-note">
+            Feature is under development - Not usable yet.
+          </p>
+        </section>
 
         {/* Card 4: Graph maker */}
         <GraphMaker />

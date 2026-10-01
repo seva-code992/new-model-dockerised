@@ -1,0 +1,144 @@
+/* Colour chooser popover and the custom colour picker (components/ColorChooser.jsx, ColorPicker.jsx). */
+
+.color-chooser {
+  position: absolute;
+  z-index: 30;
+  width: 240px;
+  padding: 12px;
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22), 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+.color-chooser__title {
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+.color-chooser__swatches {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.color-chooser__swatch {
+  height: 32px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  border-radius: var(--radius-inner);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+.color-chooser__swatch:hover { box-shadow: var(--shadow-button); }
+.color-chooser__swatch--selected { outline: 2px solid var(--color-text); outline-offset: 1px; }
+.color-chooser__actions .button { white-space: nowrap; }
+.color-chooser__actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+}
+.color-chooser__themes { display: flex; flex-direction: column; gap: 6px; }
+.color-chooser__theme {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  font-size: 12px;
+  text-align: left;
+  color: var(--color-text);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-inner);
+  cursor: pointer;
+}
+.color-chooser__theme:hover { background: var(--color-hover-light); }
+.color-chooser__theme--selected { border-color: var(--color-border-strong); background: var(--color-row); }
+.color-chooser__theme-strip { display: flex; overflow: hidden; border-radius: 4px; }
+.color-chooser__theme-chip { flex: 1; height: 14px; }
+
+/* ---- custom picker ---- */
+.color-picker { display: flex; flex-direction: column; gap: 12px; }
+.color-picker__square {
+  position: relative;
+  height: 150px;
+  overflow: hidden;
+  border-radius: 12px;
+  cursor: crosshair;
+  touch-action: none;
+}
+.color-picker__square-white,
+.color-picker__square-black { position: absolute; inset: 0; pointer-events: none; }
+.color-picker__square-white { background: linear-gradient(to right, #ffffff, rgba(255, 255, 255, 0)); }
+.color-picker__square-black { background: linear-gradient(to top, #000000, rgba(0, 0, 0, 0)); }
+.color-picker__thumb {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid var(--color-white);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+.color-picker__hue {
+  position: relative;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%);
+  cursor: pointer;
+  touch-action: none;
+}
+.color-picker__hue-thumb {
+  position: absolute;
+  top: -2px;
+  width: 16px;
+  height: 16px;
+  margin-left: -8px;
+  border: 2px solid var(--color-white);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+.color-picker__value-row { display: flex; gap: 8px; align-items: center; }
+.color-picker__text {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--color-text);
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-inner);
+  box-shadow: var(--shadow-sm);
+  outline: none;
+}
+.color-picker__text:focus { border-color: var(--color-border-strong); }
+.color-picker__preview {
+  width: 36px;
+  height: 34px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-inner);
+}
+.color-picker__format-row { display: flex; justify-content: space-between; gap: 8px; }
+.color-picker__format {
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--color-text);
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-inner);
+  box-shadow: var(--shadow-sm);
+}
+.color-picker__copy {
+  width: 36px;
+  height: 34px;
+  color: var(--color-text);
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-inner);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+.color-picker__copy:hover { background: var(--color-hover-light); }
+.color-picker__copy-icon { width: 16px; height: 16px; }

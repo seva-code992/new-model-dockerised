@@ -1,0 +1,189 @@
+/* Pieces shared by Semantic search and Keyword search so equal elements look identical. */
+
+/* ---- form fields ---- */
+.field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.field__label {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+/* select / number input */
+.field__control {
+  padding: 6px 12px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--color-text);
+  background: var(--color-button);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-button);
+}
+.field__control:focus {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+select.field__control {
+  cursor: pointer;
+}
+.field__control--number {
+  width: 80px;
+  text-align: center;
+}
+
+/* ---- search bar: pill with the query input, plus the round submit button ---- */
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.search-pill {
+  flex: 1 1 0%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--color-white);
+  border: 1px solid var(--color-text);
+  border-radius: 9999px;
+}
+.search-pill__input {
+  flex: 1 1 0%;
+  min-width: 0;
+  padding: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--color-text);
+  background: transparent;
+  border: none;
+}
+.search-pill__input::placeholder {
+  color: var(--color-muted);
+  opacity: 1;
+}
+.search-pill__input:focus {
+  outline: none;
+}
+
+/* ---- icon buttons (round search submit, square upload) ---- */
+.icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--color-text);
+  background: var(--color-button);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-button);
+  box-shadow: var(--shadow-button);
+  cursor: pointer;
+}
+.icon-button:hover {
+  background: var(--color-button-hover);
+}
+.icon-button:active {
+  box-shadow: var(--shadow-button-pressed);
+}
+.icon-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.icon-button__icon {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.icon-button--small {
+  width: 32px;
+  height: 32px;
+}
+.icon-button--small .icon-button__icon {
+  width: 16px;
+  height: 16px;
+}
+.icon-button--round {
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+}
+.icon-button--primary {
+  background: var(--color-accent);
+  border-color: var(--color-text);
+}
+.icon-button--primary:hover {
+  background: var(--color-accent-hover);
+}
+
+/* ---- dropdown menus opening upwards from a button ---- */
+.menu-anchor {
+  position: relative;
+}
+.menu--above {
+  right: 0;
+  bottom: 100%;
+  margin-bottom: 4px;
+}
+.menu__item--with-icon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.menu__icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---- results table ---- */
+.results-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+}
+.results-table {
+  width: 100%;
+  text-align: left;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--color-text);
+}
+.results-table__head-row {
+  background: var(--color-button);
+  border-bottom: 1px solid var(--color-border);
+  font-weight: 700;
+}
+.results-table__row {
+  background: var(--color-row);
+  border-bottom: 1px solid var(--color-divider);
+}
+.results-table__row:hover {
+  background: var(--color-hover-light);
+}
+.results-table__th,
+.results-table__cell {
+  padding: 12px;
+}
+.results-table__cell {
+  font-weight: 400;
+}
+.results-table--nowrap .results-table__th,
+.results-table--nowrap .results-table__cell {
+  white-space: nowrap;
+}
+.results-table__center {
+  text-align: center;
+}

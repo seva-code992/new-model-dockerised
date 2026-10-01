@@ -1,7 +1,8 @@
 import React, { useState } from "react";
+import Button from "../../components/Button.jsx";
 
 function ReportModal({ currentSpecies = "", currentQuery = "" }) {
-      const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [reportText, setReportText] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,14 +61,6 @@ function ReportModal({ currentSpecies = "", currentQuery = "" }) {
       {isOpen && (
         <div className="report-modal__overlay">
           <div className="report-modal__dialog">
-            <button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              className="report-modal__close-button"
-            >
-              ✕
-            </button>
-
             <h3 className="report-modal__title">What's wrong?</h3>
 
             <form onSubmit={handleSubmit}>
@@ -86,13 +79,10 @@ function ReportModal({ currentSpecies = "", currentQuery = "" }) {
               )}
 
               <div className="report-modal__actions">
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="report-modal__submit-button"
-                >
-                  {isSubmitting ? "Sending..." : "Submit"}
-                </button>
+                <Button onClick={() => setIsOpen(false)}>Close</Button>
+                <Button type="submit" variant="primary" disabled={isSubmitting}>
+                  {isSubmitting ? "Sending..." : "Send"}
+                </Button>
               </div>
             </form>
           </div>

@@ -1,0 +1,50 @@
+/* ---- App shell ---- */
+.app {
+  min-height: 100vh;
+  padding: 40px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+  background-color: var(--color-page);
+  font-family: var(--font-family);
+}
+
+.app__badge {
+  align-self: flex-start;
+  margin-left: 48px;
+  padding: 8px 16px;
+  background-color: var(--color-brand);
+  color: var(--color-text);
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 28px;
+  border-radius: 2px;
+  box-shadow: var(--shadow-md);
+}
+
+.app__title {
+  margin: 8px 0;
+  font-size: 30px;
+  line-height: 36px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.app__content {
+  width: 100%;
+  max-width: 771px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  align-items: stretch;
+}
+
+/* "Verify your results" placeholder card (uses .card / .card__title) */
+.app__verify-note {
+  margin: 16px 0 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+  color: var(--color-danger);
+}
