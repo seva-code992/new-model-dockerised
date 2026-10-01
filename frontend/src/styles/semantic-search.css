@@ -1,0 +1,52 @@
+/* ---- Semantic search (card frame, fields, table and menus come from shared styles) ---- */
+.semantic-search__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.semantic-search__form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.semantic-search__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.semantic-search__error {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--color-danger);
+}
+
+.semantic-search__col-quarter {
+  width: 25%;
+}
+.semantic-search__col-half {
+  width: 50%;
+}
+
+.semantic-search__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.semantic-search__result-count {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.semantic-search__footer-actions {
+  display: flex;
+  gap: 12px;
+}

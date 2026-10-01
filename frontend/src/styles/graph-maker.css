@@ -1,0 +1,304 @@
+/* ===== Graph maker ===== */
+
+
+/* ---- feature-specific layout (the card frame, buttons and chevron are shared components) ---- */
+.graph-maker__body {
+  position: relative;
+  min-height: 420px;
+  margin-top: 24px;
+}
+.graph-maker__prompt {
+  margin: 0 0 24px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--color-text);
+}
+.graph-maker__hidden { display: none; }
+.graph-maker__file-input { display: none; }
+
+/* ---- graph choices ---- */
+.graph-options {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.graph-options__row {
+  display: flex;
+  align-items: center;
+  gap: 48px;
+  min-height: 82px;
+}
+.graph-option {
+  height: 52px;
+  padding: 0 24px;
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--color-text);
+  text-align: left;
+  background: var(--color-button);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: var(--shadow-button);
+  cursor: pointer;
+  border-radius: var(--radius-button);
+}
+.graph-option--bar,
+.graph-option--heatmap { width: 194px; }
+.graph-option--network { width: 239px; }
+.graph-option:hover {
+  background: var(--color-button-hover);
+}
+.graph-option:active {
+  background: var(--color-button-hover);
+  box-shadow: var(--shadow-button-pressed);
+}
+.graph-option--selected {
+  background: var(--color-accent);
+  border-color: #000;
+}
+.graph-option__bullet { margin-right: 4px; }
+
+/* ---- option icons (shapes and colours live here, not in the JSX) ---- */
+.graph-icon { flex: none; overflow: visible; }
+.graph-icon__line { stroke: var(--color-text); stroke-width: 1; fill: none; }
+.graph-icon__bar { fill: #F68686; }
+.graph-icon__node { fill: var(--color-white); stroke: var(--color-text); stroke-width: 1; }
+.graph-icon__heat-cell[data-tone="red"] { fill: #B70000; }
+.graph-icon__heat-cell[data-tone="blue"] { fill: #4346F4; }
+.graph-icon__heat-cell[data-tone="cyan"] { fill: #60F4FF; }
+.graph-icon__heat-cell[data-tone="yellow"] { fill: #E2FF60; }
+.graph-icon__heat-cell[data-tone="orange"] { fill: #FF8560; }
+.graph-icon__heat-cell[data-tone="gold"] { fill: #F4BC43; }
+.graph-icon__heat-cell[data-tone="indigo"] { fill: #4352F4; }
+
+/* ---- information box that opens on top of the choices ---- */
+.info-box {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  background: var(--color-white);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: var(--shadow-md);
+  z-index: 5;
+}
+.info-box__title {
+  margin: 0 0 20px;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 28px;
+  text-align: center;
+  color: var(--color-text);
+}
+.info-box__text {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  color: var(--color-text);
+}
+.info-box__text p { margin: 0 0 14px; }
+.info-box__error { margin: 0 0 12px; font-size: 13px; color: var(--color-danger); }
+.info-box__buttons {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 24px;
+}
+
+/* ---- editor ---- */
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+  background: var(--color-white);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: var(--shadow-md);
+}
+.editor__title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 28px;
+  text-align: center;
+  color: var(--color-text);
+}
+.editor__toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.editor__paste-area {
+  display: flex;
+  height: 228px;
+  background: var(--color-row);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-box);
+  box-shadow: var(--shadow-sunken);
+}
+.editor__paste-textarea,
+.editor-group__textarea {
+  flex: 1;
+  width: 100%;
+  padding: 16px 20px;
+  font-family: var(--font-family);
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--color-text);
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border-radius: var(--radius-inner);
+}
+.editor__paste-textarea::placeholder,
+.editor-group__textarea::placeholder { color: var(--color-placeholder); }
+.editor__message { margin: 0; font-size: 12px; color: var(--color-muted); }
+.editor__message--error { color: var(--color-danger); }
+.editor__message--block { font-size: 13px; }
+.editor__footer {
+  display: flex;
+  gap: 24px;
+  margin-top: 6px;
+}
+.editor__remove-button {
+  padding: 0 6px;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--color-danger);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.editor-category { display: flex; flex-direction: column; gap: 18px; }
+.editor-category__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.editor-category__pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: var(--color-button);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: var(--shadow-button);
+  border-radius: var(--radius-button);
+}
+.editor-category__name,
+.editor-group__name {
+  flex: 1 1 160px;
+  min-width: 0;
+  width: 160px;
+  padding: 2px 4px;
+  font-size: 16px;
+  line-height: 20px;
+  color: var(--color-text);
+  background: transparent;
+  border: 1px solid transparent;
+  outline: none;
+  border-radius: 6px;
+}
+.editor-category__name:hover,
+.editor-category__name:focus,
+.editor-group__name:hover,
+.editor-group__name:focus {
+  background: var(--color-white);
+  border-color: var(--color-border-strong);
+}
+.editor-group__rename-hint { font-size: 10px; color: var(--color-muted); white-space: nowrap; }
+.editor-category__groups {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 18px;
+}
+.editor-group {
+  position: relative;
+  display: flex;
+  flex: 1 1 260px;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 300px;
+}
+.editor-group__heading { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; }
+.editor-group__box {
+  position: relative;
+  display: flex;
+  height: 248px;
+  padding: 14px;
+  background: var(--group-color, var(--color-default-group));
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-box);
+  box-shadow: var(--shadow-box);
+}
+/* heatmap groups have no colour: a plain box */
+.editor-group__box--plain { background: var(--color-row); box-shadow: var(--shadow-sunken); }
+.editor-group__color-hint { font-size: 11px; color: var(--color-link); }
+/* The coloured frame around the text is itself the colour picker; the text sits on a light card. */
+.editor-group__textarea {
+  position: relative;
+  z-index: 1;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow-sunken);
+}
+.editor-group__box--plain .editor-group__textarea { background: transparent; box-shadow: none; }
+.editor-group__frame-button {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: inherit;
+  cursor: pointer;
+}
+.editor__add-group-button {
+  align-self: center;
+  width: 52px;
+  height: 44px;
+  font-size: 20px;
+  color: var(--color-text);
+  background: var(--color-button);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: var(--shadow-button);
+  cursor: pointer;
+  border-radius: var(--radius-button);
+}
+.editor__add-group-button:hover { background: var(--color-button-hover); }
+.editor__add-group-button:active {
+  background: var(--color-button-hover);
+  box-shadow: var(--shadow-button-pressed);
+}
+
+/* ---- editor extras ---- */
+.editor__note { margin: 0; font-size: 12px; line-height: 17px; color: var(--color-muted); }
+.editor__notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--color-text);
+  background: var(--color-row);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-accent);
+  border-radius: var(--radius-inner);
+}
+.editor__notice-field { display: flex; align-items: center; gap: 8px; }
+.editor__customize { position: relative; }
+.editor-group__chooser { top: 74px; left: 12px; }
+.editor__customize-chooser { top: 100%; left: 0; margin-top: 6px; }

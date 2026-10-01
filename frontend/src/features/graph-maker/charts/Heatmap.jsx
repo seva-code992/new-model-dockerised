@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from "react";
 import * as d3 from "d3";
-import { ChartView, addText, frameLegend, useChartTools } from "./ChartTools.jsx";
-import { jaccard } from "./chartUtils.js";
+import ChartView from "./ChartView.jsx";
+import { useChartTools } from "./useChartTools.js";
+import { addText, frameBox, truncate } from "./svgText.js";
+import { jaccard } from "../data/statistics.js";
+import { HEATMAP_MEASURES, findMeasure, hasMeasureColumn, measureValues } from "../data/measures.js";
 
 const CHART_WIDTH = 980;
 const CHART_HEIGHT = 640;
@@ -9,6 +12,7 @@ const MARGIN = { top: 56, right: 215, bottom: 130, left: 150 };
 const DEFAULT_TITLE = "Gene graph (click to rename)";
 const LEGEND_BAR = { width: 18, height: 200 };
 const MIN_CELL_SIZE_FOR_VALUE = 34;
+const SHARED_ITEMS_IN_TOOLTIP = 8;
 
 // The first entry is the default colour scale. "Heat" means intensity: a Jaccard index of 0 is the cold end
 // and 1 is the hot end. RdYlBu and Spectral run red -> blue in d3, so they are flipped to put red at 1.
@@ -25,13 +29,18 @@ const colorAt = (scale) => (t) => scale.interpolator(scale.reversed ? 1 - t : t)
 const gradientCss = (scale) =>
   `linear-gradient(to right, ${d3.quantize(colorAt(scale), 8).join(", ")})`;
 
-/** categories[0].groups: [{id, name, genes: [{id}]}]. Every cell is the Jaccard index of two groups' gene IDs. */
-export default function Heatmap({ categories }) {
+/**
+ * categories[0].groups: [{ id, name, genes: [{ id, columns }] }].
+ * Every cell is the Jaccard index of two groups, compared on the chosen measure (gene IDs by default).
+ */
+export default function Heatmap({ categories, measureKey, onMeasureChange }) {
   const tools = useChartTools();
   const { svgRef, zoomApi, labels, showTooltip, hideTooltip, stable } = tools;
   const groups = categories[0]?.groups ?? [];
   const [colorScaleKey, setColorScaleKey] = useState(COLOR_SCALES[0].key);
   const [scaleMenuOpen, setScaleMenuOpen] = useState(false);
+  const measure = findMeasure(measureKey);
+  const availableMeasures = HEATMAP_MEASURES.filter((option) => hasMeasureColumn(groups, option));
 
   useEffect(() => {
     const labelOf = (key, fallback) => labels[key] ?? fallback;
@@ -40,6 +49,7 @@ export default function Heatmap({ categories }) {
     const colorScale = d3.scaleSequential(colorAt(activeScale)).domain([0, 1]);
     const gridSize = Math.min(CHART_WIDTH - MARGIN.left - MARGIN.right, CHART_HEIGHT - MARGIN.top - MARGIN.bottom);
     const cellScale = d3.scaleBand().domain(groups.map((group) => group.id)).range([0, gridSize]).padding(0.04);
+    const itemsOf = (group) => group.genes.flatMap((gene) => measureValues(gene, measure));
 
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
@@ -52,7 +62,7 @@ export default function Heatmap({ categories }) {
     const grid = svg.append("g").attr("transform", `translate(${MARGIN.left},${MARGIN.top})`);
     groups.forEach((rowGroup) => {
       groups.forEach((columnGroup) => {
-        const overlap = jaccard(rowGroup.genes.map((gene) => gene.id), columnGroup.genes.map((gene) => gene.id));
+        const overlap = jaccard(itemsOf(rowGroup), itemsOf(columnGroup));
         const cellX = cellScale(columnGroup.id);
         const cellY = cellScale(rowGroup.id);
         const cellColor = colorScale(overlap.value);
@@ -64,7 +74,11 @@ export default function Heatmap({ categories }) {
           .on("mousemove", (event) => showTooltip(event, [
             `${groupName(rowGroup)} vs ${groupName(columnGroup)}`,
             `Jaccard index: ${overlap.value.toFixed(4)}`,
-            `Common genes: ${overlap.inter} of ${overlap.union} in the union`,
+            `Compared on: ${measure.label}`,
+            `Shared: ${overlap.sharedCount} of ${overlap.unionSize} in the union`,
+            ...(overlap.sharedCount
+              ? [`${overlap.shared.slice(0, SHARED_ITEMS_IN_TOOLTIP).map((item) => truncate(item, 24)).join(", ")}${overlap.sharedCount > SHARED_ITEMS_IN_TOOLTIP ? ", …" : ""}`]
+              : []),
           ]))
           .on("mouseleave", hideTooltip);
         if (cellScale.bandwidth() > MIN_CELL_SIZE_FOR_VALUE) {
@@ -101,8 +115,17 @@ export default function Heatmap({ categories }) {
     });
     legend.append("text").attr("class", "chart-hint-label").attr("x", 0).attr("y", LEGEND_BAR.height + 24).text("Click the bar to");
     legend.append("text").attr("class", "chart-hint-label").attr("x", 0).attr("y", LEGEND_BAR.height + 38).text("change colours");
-    frameLegend(legend, 12);
-  }, [groups, labels, colorScaleKey, svgRef, zoomApi, showTooltip, hideTooltip, stable]);
+    frameBox(legend, 12);
+  }, [groups, measure, labels, colorScaleKey, svgRef, zoomApi, showTooltip, hideTooltip, stable]);
+
+  const toolbar = availableMeasures.length > 1 && (
+    <div className="chart-toolbar">
+      <label className="chart-toolbar__label" htmlFor="heatmap-measure">Compare groups by:</label>
+      <select id="heatmap-measure" className="field__control" value={measure.key} onChange={(event) => onMeasureChange(event.target.value)}>
+        {availableMeasures.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}
+      </select>
+    </div>
+  );
 
   const scaleMenu = scaleMenuOpen && (
     <div className="heatmap__scale-menu">
@@ -120,5 +143,5 @@ export default function Heatmap({ categories }) {
     </div>
   );
 
-  return <ChartView tools={tools} width={CHART_WIDTH} height={CHART_HEIGHT} overlay={scaleMenu} zoomable={false} />;
+  return <ChartView tools={tools} width={CHART_WIDTH} height={CHART_HEIGHT} toolbar={toolbar} overlay={scaleMenu} zoomable={false} />;
 }

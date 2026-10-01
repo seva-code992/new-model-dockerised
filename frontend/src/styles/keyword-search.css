@@ -1,0 +1,29 @@
+/* ---- Keyword search (card frame, fields, table and menus come from shared styles) ---- */
+.keyword-search__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.keyword-search__form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.keyword-search__file-input {
+  display: none;
+}
+
+.keyword-search__error {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--color-danger);
+}
+
+.keyword-search__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}

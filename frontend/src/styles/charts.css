@@ -1,0 +1,134 @@
+/* ---- graph view ---- */
+.graph-view { display: flex; flex-direction: column; gap: 14px; }
+.graph-view__footer { display: flex; justify-content: space-between; }
+
+.chart-view { display: flex; flex-direction: column; gap: 10px; }
+.chart-view__canvas {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-white);
+  border: 1px solid var(--color-border-strong);
+}
+.chart-view__svg { display: block; width: 100%; height: auto; user-select: none; }
+.chart-view__actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.chart-view__hint { font-size: 11px; color: var(--color-muted); }
+.chart-view__buttons { display: flex; gap: 12px; align-items: center; }
+
+.chart-tooltip {
+  position: absolute;
+  z-index: 20;
+  max-width: 300px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--color-white);
+  background: rgba(0, 0, 0, 0.88);
+  border-radius: 4px;
+  pointer-events: none;
+}
+.chart-tooltip__heading { font-weight: 700; }
+.chart-rename-input {
+  position: absolute;
+  z-index: 30;
+  padding: 0 4px;
+  font-size: 14px;
+  color: var(--color-text);
+  background: var(--color-white);
+  border: 1px solid var(--color-text);
+  border-radius: 4px;
+}
+
+/* ---- text inside the SVG charts ---- */
+.chart-text,
+.chart-tick-label,
+.chart-hint-label {
+  font-family: var(--font-family);
+  fill: var(--color-text);
+}
+.chart-text { text-anchor: middle; }
+.chart-text--renamable { cursor: text; }
+.chart-text--renamable:hover { text-decoration: underline dotted; }
+.chart-text--end { text-anchor: end; }
+.chart-title { font-size: 20px; font-weight: 700; }
+/* every axis label and category label has the same weight */
+.chart-axis-title { font-size: 13px; font-weight: 600; }
+.chart-tick-label { font-size: 11px; fill: #333333; text-anchor: start; }
+.chart-tick-label.chart-text--end { text-anchor: end; }
+.chart-hint-label { font-size: 10px; fill: var(--color-muted); text-anchor: start; }
+.chart-legend-heading { font-size: 13px; font-weight: 700; text-anchor: start; }
+.chart-legend-category { font-size: 12px; font-weight: 700; text-anchor: start; }
+.chart-legend-label { font-size: 12px; text-anchor: start; }
+.chart-legend-frame { fill: var(--color-white); stroke: var(--color-text); stroke-width: 1; }
+.chart-legend-swatch { stroke: var(--color-text); stroke-width: 0.5; }
+
+.chart-hit-area { fill: transparent; }
+.chart-gridline { stroke: #E5E5E5; stroke-width: 1; }
+.chart-axis-line { stroke: var(--color-text); stroke-width: 1; }
+.chart-cluster-bracket { stroke: var(--color-text); stroke-width: 2; }
+
+.bar-plot__bar { stroke: none; }
+.bar-plot__bar:hover { stroke: var(--color-text); stroke-width: 1; }
+
+.heatmap__cell:hover { stroke: var(--color-text); stroke-width: 2; }
+.heatmap__cell-value { font-size: 12px; text-anchor: middle; pointer-events: none; }
+.heatmap__cell-value--light { fill: var(--color-white); }
+.heatmap__cell-value--dark { fill: var(--color-text); }
+.heatmap__legend-bar { stroke: var(--color-text); stroke-width: 1; cursor: pointer; }
+.heatmap__scale-menu {
+  position: absolute;
+  top: 70px;
+  right: 14px;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 210px;
+  padding: 10px;
+  background: var(--color-white);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: var(--shadow-box);
+  border-radius: var(--radius-menu);
+}
+.heatmap__scale-menu-title { margin-bottom: 4px; font-size: 12px; font-weight: 700; }
+.heatmap__scale-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 6px;
+  font-size: 11px;
+  color: var(--color-text);
+  background: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+.heatmap__scale-option:hover { background: #F0F0F0; }
+.heatmap__scale-option--active { border-color: var(--color-text); background: #F7F7F7; }
+.heatmap__scale-preview { display: block; width: 100%; height: 12px; border: 1px solid #777777; }
+
+.network__canvas { fill: #FAFAFA; stroke: #CCCCCC; stroke-width: 1; }
+.network__edge { stroke: #000000; stroke-opacity: 1; stroke-linecap: round; }
+.network__node { stroke: none; cursor: grab; }
+.network__node:active { cursor: grabbing; }
+.network__node:hover { r: 11px; }
+.network__legend-dot { stroke: var(--color-text); stroke-width: 1; }
+.chart-link { font-size: 11px; fill: var(--color-link); text-anchor: start; text-decoration: underline; cursor: pointer; }
+
+/* ---- controls above a chart (network threshold, heatmap measure) ---- */
+.chart-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--color-text);
+}
+.chart-toolbar__label { font-weight: 600; }
+.chart-toolbar__slider { width: 260px; accent-color: var(--color-accent-hover); }
+.chart-toolbar__value { width: 40px; }
+.chart-toolbar__note { font-size: 11px; color: var(--color-muted); }
