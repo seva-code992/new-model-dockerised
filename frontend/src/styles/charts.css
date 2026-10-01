@@ -71,9 +71,10 @@
 .chart-axis-line { stroke: var(--color-text); stroke-width: 1; }
 .chart-cluster-bracket { stroke: var(--color-text); stroke-width: 2; }
 
-.bar-plot__bar { stroke: none; }
+.bar-plot__bar { stroke: none; cursor: pointer; }
 .bar-plot__bar:hover { stroke: var(--color-text); stroke-width: 1; }
 
+.heatmap__cell { cursor: pointer; }
 .heatmap__cell:hover { stroke: var(--color-text); stroke-width: 2; }
 .heatmap__cell-value { font-size: 12px; text-anchor: middle; pointer-events: none; }
 .heatmap__cell-value--light { fill: var(--color-white); }
@@ -132,3 +133,46 @@
 .chart-toolbar__slider { width: 260px; accent-color: var(--color-accent-hover); }
 .chart-toolbar__value { width: 40px; }
 .chart-toolbar__note { font-size: 11px; color: var(--color-muted); }
+
+/* ---- details pinned by a click on a bar / heatmap square ---- */
+.chart-pinned {
+  position: absolute;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  width: 320px;
+  max-height: 340px;
+  font-size: 12px;
+  color: var(--color-text);
+  background: var(--color-white);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-menu);
+  box-shadow: var(--shadow-box);
+}
+.chart-pinned__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-divider);
+}
+.chart-pinned__heading { font-weight: 700; overflow-wrap: anywhere; }
+.chart-pinned__close {
+  padding: 0 4px;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--color-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.chart-pinned__close:hover { color: var(--color-text); }
+.chart-pinned__body { min-height: 0; padding: 8px 10px; overflow-y: auto; }
+.chart-pinned__row { margin-bottom: 5px; line-height: 17px; }
+.chart-pinned__label { font-weight: 600; color: var(--color-muted); }
+.chart-pinned__row .chart-pinned__label::after { content: ": "; }
+.chart-pinned__value { overflow-wrap: anywhere; user-select: text; }
+.chart-pinned__list { margin-top: 4px; }
+.chart-pinned__items { margin: 4px 0 0; padding-left: 18px; user-select: text; }
+.chart-pinned__items li { margin-bottom: 3px; overflow-wrap: anywhere; }

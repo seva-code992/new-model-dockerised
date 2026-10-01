@@ -2,9 +2,9 @@ import React, { useEffect, useState } from "react";
 import * as d3 from "d3";
 import ChartView from "./ChartView.jsx";
 import { useChartTools } from "./useChartTools.js";
-import { addText, frameBox, truncate } from "./svgText.js";
+import { addText, frameBox } from "./svgText.js";
 import { jaccard } from "../data/statistics.js";
-import { HEATMAP_MEASURES, findMeasure, hasMeasureColumn, measureValues } from "../data/measures.js";
+import { HEATMAP_MEASURES, countGenesWithoutData, findMeasure, genesByMeasureValue, hasMeasureColumn } from "../data/measures.js";
 
 const CHART_WIDTH = 980;
 const CHART_HEIGHT = 640;
@@ -12,7 +12,6 @@ const MARGIN = { top: 56, right: 215, bottom: 130, left: 150 };
 const DEFAULT_TITLE = "Gene graph (click to rename)";
 const LEGEND_BAR = { width: 18, height: 200 };
 const MIN_CELL_SIZE_FOR_VALUE = 34;
-const SHARED_ITEMS_IN_TOOLTIP = 8;
 
 // The first entry is the default colour scale. "Heat" means intensity: a Jaccard index of 0 is the cold end
 // and 1 is the hot end. RdYlBu and Spectral run red -> blue in d3, so they are flipped to put red at 1.
@@ -35,7 +34,7 @@ const gradientCss = (scale) =>
  */
 export default function Heatmap({ categories, measureKey, onMeasureChange }) {
   const tools = useChartTools();
-  const { svgRef, zoomApi, labels, showTooltip, hideTooltip, stable } = tools;
+  const { svgRef, zoomApi, labels, showTooltip, hideTooltip, pinPanel, unpinPanel, stable } = tools;
   const groups = categories[0]?.groups ?? [];
   const [colorScaleKey, setColorScaleKey] = useState(COLOR_SCALES[0].key);
   const [scaleMenuOpen, setScaleMenuOpen] = useState(false);
@@ -49,10 +48,49 @@ export default function Heatmap({ categories, measureKey, onMeasureChange }) {
     const colorScale = d3.scaleSequential(colorAt(activeScale)).domain([0, 1]);
     const gridSize = Math.min(CHART_WIDTH - MARGIN.left - MARGIN.right, CHART_HEIGHT - MARGIN.top - MARGIN.bottom);
     const cellScale = d3.scaleBand().domain(groups.map((group) => group.id)).range([0, gridSize]).padding(0.04);
-    const itemsOf = (group) => group.genes.flatMap((gene) => measureValues(gene, measure));
+    // For every group: which genes carry each value of the measure. Missing data ("-") gives no value at all.
+    const genesByValue = new Map(groups.map((group) => [group.id, genesByMeasureValue(group, measure)]));
+    const geneIdsMode = !measure.column;
+
+    /** Everything the pinned panel shows about the overlap of two groups. */
+    const describeOverlap = (rowGroup, columnGroup, overlap) => {
+      const rowGenes = genesByValue.get(rowGroup.id);
+      const columnGenes = genesByValue.get(columnGroup.id);
+      const sameGroup = rowGroup.id === columnGroup.id;
+      const rowName = groupName(rowGroup);
+      const columnName = groupName(columnGroup);
+      const rows = [
+        ["Jaccard index", overlap.value.toFixed(4)],
+        ["Compared on", measure.label],
+        ["Shared", `${overlap.sharedCount} of ${overlap.unionSize} in the union`],
+        ...(sameGroup ? [] : [
+          [`Only in ${rowName}`, String(rowGenes.size - overlap.sharedCount)],
+          [`Only in ${columnName}`, String(columnGenes.size - overlap.sharedCount)],
+        ]),
+        ...(geneIdsMode ? [] : [[
+          "Genes without data (NA)",
+          sameGroup ? String(countGenesWithoutData(rowGroup, measure)) : `${rowName}: ${countGenesWithoutData(rowGroup, measure)} · ${columnName}: ${countGenesWithoutData(columnGroup, measure)}`,
+        ]]),
+      ];
+      const sharedItems = overlap.shared.map((value) => {
+        if (geneIdsMode) {
+          const { description } = rowGenes.get(value)[0];
+          return description ? `${value} - ${description}` : value;
+        }
+        const rowCount = rowGenes.get(value).length;
+        const columnCount = columnGenes.get(value).length;
+        return sameGroup ? `${value} (${rowCount} genes)` : `${value} (${rowName}: ${rowCount} genes · ${columnName}: ${columnCount} genes)`;
+      });
+      return {
+        heading: sameGroup ? rowName : `${rowName} vs ${columnName}`,
+        rows,
+        lists: [{ title: geneIdsMode ? `Shared genes (${overlap.sharedCount})` : `Shared ${measure.label.toLowerCase()} (${overlap.sharedCount})`, items: sharedItems }],
+      };
+    };
 
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
+    svg.on("click", (event) => { if (event.target === svg.node()) unpinPanel(); }); // empty space closes the pinned details
     zoomApi.current = null;
 
     addText(svg, stable, { x: MARGIN.left + gridSize / 2, y: 30, text: labelOf("title", DEFAULT_TITLE), key: "title", className: "chart-title" });
@@ -62,7 +100,7 @@ export default function Heatmap({ categories, measureKey, onMeasureChange }) {
     const grid = svg.append("g").attr("transform", `translate(${MARGIN.left},${MARGIN.top})`);
     groups.forEach((rowGroup) => {
       groups.forEach((columnGroup) => {
-        const overlap = jaccard(itemsOf(rowGroup), itemsOf(columnGroup));
+        const overlap = jaccard([...genesByValue.get(rowGroup.id).keys()], [...genesByValue.get(columnGroup.id).keys()]);
         const cellX = cellScale(columnGroup.id);
         const cellY = cellScale(rowGroup.id);
         const cellColor = colorScale(overlap.value);
@@ -76,11 +114,10 @@ export default function Heatmap({ categories, measureKey, onMeasureChange }) {
             `Jaccard index: ${overlap.value.toFixed(4)}`,
             `Compared on: ${measure.label}`,
             `Shared: ${overlap.sharedCount} of ${overlap.unionSize} in the union`,
-            ...(overlap.sharedCount
-              ? [`${overlap.shared.slice(0, SHARED_ITEMS_IN_TOOLTIP).map((item) => truncate(item, 24)).join(", ")}${overlap.sharedCount > SHARED_ITEMS_IN_TOOLTIP ? ", …" : ""}`]
-              : []),
+            overlap.sharedCount ? `Click to see the shared ${geneIdsMode ? "genes" : measure.label.toLowerCase()}` : "Nothing shared",
           ]))
-          .on("mouseleave", hideTooltip);
+          .on("mouseleave", hideTooltip)
+          .on("click", (event) => pinPanel(event, describeOverlap(rowGroup, columnGroup, overlap)));
         if (cellScale.bandwidth() > MIN_CELL_SIZE_FOR_VALUE) {
           const isDarkCell = d3.hcl(cellColor).l < 55;
           grid.append("text")
@@ -116,7 +153,7 @@ export default function Heatmap({ categories, measureKey, onMeasureChange }) {
     legend.append("text").attr("class", "chart-hint-label").attr("x", 0).attr("y", LEGEND_BAR.height + 24).text("Click the bar to");
     legend.append("text").attr("class", "chart-hint-label").attr("x", 0).attr("y", LEGEND_BAR.height + 38).text("change colours");
     frameBox(legend, 12);
-  }, [groups, measure, labels, colorScaleKey, svgRef, zoomApi, showTooltip, hideTooltip, stable]);
+  }, [groups, measure, labels, colorScaleKey, svgRef, zoomApi, showTooltip, hideTooltip, pinPanel, unpinPanel, stable]);
 
   const toolbar = availableMeasures.length > 1 && (
     <div className="chart-toolbar">
@@ -143,5 +180,5 @@ export default function Heatmap({ categories, measureKey, onMeasureChange }) {
     </div>
   );
 
-  return <ChartView tools={tools} width={CHART_WIDTH} height={CHART_HEIGHT} toolbar={toolbar} overlay={scaleMenu} zoomable={false} />;
+  return <ChartView tools={tools} width={CHART_WIDTH} height={CHART_HEIGHT} toolbar={toolbar} overlay={scaleMenu} zoomable={false} pinHint="Click a square to see the shared genes." />;
 }

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef } from "react";
 import * as d3 from "d3";
 import ChartView from "./ChartView.jsx";
 import { useChartTools } from "./useChartTools.js";
-import { addText, frameBox } from "./svgText.js";
+import { addText, frameBox, truncate } from "./svgText.js";
 import { zoomFilter, zoomWheelDelta, disableZoom } from "./zoomHelpers.js";
 
 const CHART_WIDTH = 980;
@@ -10,6 +10,7 @@ const DEFAULT_TITLE = "Gene graph (click to rename)";
 const GAP_BETWEEN_CLUSTERS = 2; // measured in bar widths
 const MIN_BAR_WIDTH_FOR_GENE_LABELS = 11; // pixels
 const MAX_ZOOM = 80;
+const HOVER_VALUE_MAX_CHARS = 60; // longer values are cut in the hover box; the pinned panel shows them in full
 
 /**
  * Lay the categories out left to right. Every bar is one "bar unit" wide and
@@ -55,7 +56,7 @@ function describeLayout(categories) {
  */
 export default function BarPlot({ categories, valueLabel }) {
   const tools = useChartTools();
-  const { svgRef, zoomApi, labels, showTooltip, hideTooltip, stable } = tools;
+  const { svgRef, zoomApi, labels, showTooltip, hideTooltip, pinPanel, unpinPanel, stable } = tools;
   const zoomTransformRef = useRef(d3.zoomIdentity);
   const layout = useMemo(() => describeLayout(categories), [categories]);
 
@@ -105,7 +106,8 @@ export default function BarPlot({ categories, valueLabel }) {
 
     // ---- zoomable part ----
     const plotRoot = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-    plotRoot.append("rect").attr("class", "chart-hit-area").attr("width", plotWidth).attr("height", plotHeight);
+    plotRoot.append("rect").attr("class", "chart-hit-area").attr("width", plotWidth).attr("height", plotHeight)
+      .on("click", unpinPanel); // a click on empty space closes the pinned details
     const plotContent = plotRoot.append("g");
 
     const render = (zoomTransform) => {
@@ -143,10 +145,19 @@ export default function BarPlot({ categories, valueLabel }) {
               bar.id,
               `${labelOf("ylabel", valueLabel)}: ${d3.format(",~g")(bar.value)}`,
               ...(showLegend ? [where] : []),
-              // everything else that was pasted but not plotted
-              ...bar.details.map(([label, text]) => `${label}: ${text}`),
+              // everything else that was pasted but not plotted (long values are shortened here)
+              ...bar.details.map(([label, text]) => `${label}: ${truncate(text, HOVER_VALUE_MAX_CHARS)}`),
+              ...(bar.details.length ? ["Click to keep the full details open"] : []),
             ]))
-            .on("mouseleave", hideTooltip);
+            .on("mouseleave", hideTooltip)
+            .on("click", (event) => pinPanel(event, {
+              heading: bar.id,
+              rows: [
+                [labelOf("ylabel", valueLabel), d3.format(",~g")(bar.value)],
+                ...(showLegend ? [["Group", where]] : []),
+                ...bar.details,
+              ],
+            }));
         });
       });
 
@@ -202,7 +213,7 @@ export default function BarPlot({ categories, valueLabel }) {
     plotRoot.call(zoomBehavior.transform, zoomTransformRef.current);
 
     return () => disableZoom(plotRoot);
-  }, [categories, valueLabel, layout, labels, svgRef, zoomApi, showTooltip, hideTooltip, stable]);
+  }, [categories, valueLabel, layout, labels, svgRef, zoomApi, showTooltip, hideTooltip, pinPanel, unpinPanel, stable]);
 
-  return <ChartView tools={tools} width={CHART_WIDTH} height={layout.height} />;
+  return <ChartView tools={tools} width={CHART_WIDTH} height={layout.height} pinHint="Click a bar to keep its details open." />;
 }
